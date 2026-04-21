@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Добавить сеанс</title>
+</head>
+<body>
+
+<h2>Добавить сеанс для {{ movie.title }}</h2>
+
+<form method="POST">
+
+    <input type="text" name="hall_name" placeholder="Зал"><br><br>
+
+    <input type="datetime-local" name="start_time"><br><br>
+
+    <input type="number" name="hall_rows" placeholder="Ряды"><br><br>
+
+    <input type="number" name="hall_cols" placeholder="Места"><br><br>
+
+    <button type="submit">Добавить</button>
+
+</form>
+
+</body>
+</html>

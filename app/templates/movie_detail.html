@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title }} - Cinema Project{% endblock %}
+
+{% block extra_css %}
+<style>
+    .seat-grid {
+        display: grid;
+        gap: 0.4rem;
+        justify-content: start;
+    }
+
+    .seat {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        border: none;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .seat-free {
+        background: #198754;
+        color: #fff;
+    }
+
+    .seat-taken {
+        background: #6c757d;
+        color: #fff;
+        cursor: not-allowed;
+    }
+
+    .seat-mine {
+        background: #0d6efd;
+        color: #fff;
+    }
+
+    .screen {
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+        text-align: center;
+        padding: 0.7rem;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-3">{{ movie.title }}</h2>
+<p>{{ movie.description }}</p>
+<p><strong>Длительность:</strong> {{ movie.duration }} мин</p>
+
+{% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <a class="btn btn-cinema mb-4" href="{{ url_for('main.add_screening', movie_id=movie.id) }}">
+        <i class="fas fa-plus-circle me-1"></i>Добавить сеанс
+    </a>
+{% endif %}
+
+{% if screenings_data %}
+    {% for item in screenings_data %}
+        {% set screening = item.screening %}
+        {% set occupied = item.occupied %}
+        <div class="card mb-4" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(229, 9, 20, 0.2);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h4 class="card-title mb-1">Сеанс {{ loop.index }}</h4>
+                        <p class="mb-1"><strong>Когда:</strong> {{ screening.start_time.strftime('%d.%m.%Y') }}</p>
+                        <p class="mb-1"><strong>Во сколько:</strong> {{ screening.start_time.strftime('%H:%M') }}</p>
+                        <p class="mb-2"><strong>Зал:</strong> {{ screening.hall_name }}</p>
+                        <p class="mb-0"><strong>Фильм:</strong> {{ movie.title }}</p>
+                    </div>
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                        <a class="btn btn-outline-cinema" href="{{ url_for('main.edit_screening', screening_id=screening.id) }}">Редактировать зал</a>
+                    {% endif %}
+                </div>
+
+                <div class="screen">Экран</div>
+                <div class="seat-grid mb-3" style="grid-template-columns: repeat({{ screening.hall_cols }}, 42px);">
+                    {% for row in range(1, screening.hall_rows + 1) %}
+                        {% for col in range(1, screening.hall_cols + 1) %}
+                            {% set booking = occupied.get((row, col)) %}
+                            {% if booking %}
+                                {% if booking.id in user_booking_ids %}
+                                    <button type="button" class="seat seat-mine" title="Ваше место">{{ row }}-{{ col }}</button>
+                                {% else %}
+                                    <button type="button" class="seat seat-taken" disabled title="Занято">{{ row }}-{{ col }}</button>
+                                {% endif %}
+                            {% else %}
+                                {% if current_user.is_authenticated %}
+                                <form method="POST" action="{{ url_for('main.book_seat', screening_id=screening.id) }}">
+                                    <input type="hidden" name="seat_row" value="{{ row }}">
+                                    <input type="hidden" name="seat_col" value="{{ col }}">
+                                    <button type="submit" class="seat seat-free" title="Забронировать">{{ row }}-{{ col }}</button>
+                                </form>
+                                {% else %}
+                                    <button type="button" class="seat seat-free" disabled title="Войдите, чтобы бронировать">{{ row }}-{{ col }}</button>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-danger">Сеансы пока не добавлены.</div>
+{% endif %}
+
+{% if current_user.is_authenticated %}
+    <h3 class="mt-5">Мои бронирования по этому фильму</h3>
+    {% if my_bookings %}
+        {% for booking in my_bookings %}
+            <div class="card mb-3" style="background: var(--card-bg); color: var(--text-primary);">
+                <div class="card-body">
+                    <p class="mb-1"><strong>Сеанс:</strong> {{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}, {{ booking.screening.hall_name }}</p>
+                    <p class="mb-3"><strong>Место:</strong> Ряд {{ booking.seat_row }}, Место {{ booking.seat_col }}</p>
+                    <form method="POST" action="{{ url_for('main.cancel_booking', booking_id=booking.id) }}">
+                        <div class="mb-2">
+                            <label class="form-label">Причина отмены</label>
+                            <textarea class="form-control" name="cancel_reason" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-cinema">Отменить бронирование</button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>У вас пока нет бронирований по этому фильму.</p>
+    {% endif %}
+{% endif %}
+{% endblock %}

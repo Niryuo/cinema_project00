@@ -1,0 +1,209 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Главная - Cinema Project{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, rgba(229, 9, 20, 0.8) 0%, rgba(11, 11, 11, 0.9) 100%),
+                    url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1920') center/cover;
+        padding: 5rem 0;
+        border-radius: 20px;
+        margin-bottom: 3rem;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(229, 9, 20, 0.3);
+    }
+
+    .hero-section h1 {
+        font-family: 'Playfair Display', serif;
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+        animation: fadeInDown 1s ease;
+    }
+
+    .hero-section p {
+        font-size: 1.3rem;
+        color: var(--text-secondary);
+        animation: fadeInUp 1s ease 0.3s both;
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .section-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
+        text-align: center;
+        position: relative;
+        padding-bottom: 1rem;
+    }
+
+    .section-title::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-color), var(--accent-gold));
+        border-radius: 2px;
+    }
+
+    .movie-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        height: 100%;
+        border: 1px solid rgba(229, 9, 20, 0.1);
+    }
+
+    .movie-card:hover {
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: 0 15px 40px rgba(229, 9, 20, 0.4);
+        border-color: var(--primary-color);
+    }
+
+    .movie-poster {
+        width: 100%;
+        height: 400px;
+        object-fit: cover;
+        background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 5rem;
+        color: var(--primary-color);
+    }
+
+    .movie-info {
+        padding: 1.5rem;
+    }
+
+    .movie-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .movie-description {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .movie-duration {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(229, 9, 20, 0.2);
+        color: var(--primary-color);
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .movie-duration i {
+        margin-right: 0.5rem;
+    }
+
+    .no-movies {
+        text-align: center;
+        padding: 4rem 0;
+        color: var(--text-secondary);
+    }
+
+    .no-movies i {
+        font-size: 5rem;
+        color: var(--primary-color);
+        margin-bottom: 1.5rem;
+        opacity: 0.5;
+    }
+
+    .no-movies h3 {
+        font-family: 'Playfair Display', serif;
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .hero-section h1 {
+            font-size: 2.5rem;
+        }
+        .hero-section p {
+            font-size: 1rem;
+        }
+        .section-title {
+            font-size: 2rem;
+        }
+        .movie-poster {
+            height: 300px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section">
+    <h1><i class="fas fa-film me-3"></i>Добро пожаловать в Cinema Project</h1>
+    <p>Откройте для себя мир кино. Лучшие фильмы ждут вас!</p>
+</div>
+
+<!-- Movies Section -->
+<h2 class="section-title">Сейчас в кино</h2>
+
+{% if movies %}
+<div class="row g-4">
+    {% for movie in movies %}
+    <div class="col-lg-4 col-md-6">
+        <a class="movie-card d-block text-decoration-none" href="{{ url_for('main.movie_detail', id=movie.id) }}">
+            <div class="movie-poster">
+                <i class="fas fa-film"></i>
+            </div>
+            <div class="movie-info">
+                <h3 class="movie-title">{{ movie.title }}</h3>
+                <p class="movie-description">{{ movie.description }}</p>
+                <div class="movie-duration">
+                    <i class="far fa-clock"></i>
+                    {{ movie.duration }} мин
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="no-movies">
+    <i class="fas fa-film"></i>
+    <h3>Фильмы скоро появятся</h3>
+    <p>Следите за обновлениями. Мы добавляем новые фильмы каждый день!</p>
+</div>
+{% endif %}
+{% endblock %}

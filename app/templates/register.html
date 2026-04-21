@@ -1,0 +1,193 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Регистрация - Cinema Project{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-container {
+        max-width: 550px;
+        margin: 0 auto;
+        background: var(--card-bg);
+        border-radius: 25px;
+        padding: 3rem;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(229, 9, 20, 0.2);
+        animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .auth-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+
+    .auth-header i {
+        font-size: 4rem;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+        animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    .auth-header h2 {
+        font-family: 'Playfair Display', serif;
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .auth-header p {
+        color: var(--text-secondary);
+    }
+
+    .form-floating {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-floating input {
+        background: var(--dark-bg);
+        border: 2px solid rgba(229, 9, 20, 0.3);
+        color: var(--text-primary);
+        border-radius: 15px;
+        padding: 1rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-floating input:focus {
+        background: var(--dark-bg);
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(229, 9, 20, 0.25);
+        color: var(--text-primary);
+    }
+
+    .form-floating label {
+        color: var(--text-secondary);
+        padding: 1rem 1rem;
+    }
+
+    .form-floating input:focus ~ label,
+    .form-floating input:not(:placeholder-shown) ~ label {
+        color: var(--primary-color);
+    }
+
+    .password-requirements {
+        background: rgba(229, 9, 20, 0.1);
+        border-left: 4px solid var(--primary-color);
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .password-requirements strong {
+        color: var(--primary-color);
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .password-requirements ul {
+        margin: 0;
+        padding-left: 1.2rem;
+    }
+
+    .btn-register {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1.1rem;
+        margin-top: 1rem;
+        border-radius: 15px;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        border: none;
+        font-weight: 700;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
+    }
+
+    .btn-register:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(229, 9, 20, 0.6);
+        background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+    }
+
+    .auth-footer {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid rgba(229, 9, 20, 0.2);
+        color: var(--text-secondary);
+    }
+
+    .auth-footer a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .auth-footer a:hover {
+        color: var(--accent-gold);
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-header">
+        <i class="fas fa-user-plus"></i>
+        <h2>Создать аккаунт</h2>
+        <p>Присоединяйтесь к миру кино</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('main.register') }}">
+        <div class="form-floating">
+            <input type="text" class="form-control" id="username" name="username"
+                   placeholder="Имя пользователя" required>
+            <label for="username"><i class="fas fa-user me-2"></i>Имя пользователя</label>
+        </div>
+
+        <div class="form-floating">
+            <input type="email" class="form-control" id="email" name="email"
+                   placeholder="Email" required>
+            <label for="email"><i class="fas fa-envelope me-2"></i>Email</label>
+        </div>
+
+        <div class="form-floating">
+            <input type="password" class="form-control" id="password" name="password"
+                   placeholder="Пароль" required>
+            <label for="password"><i class="fas fa-lock me-2"></i>Пароль</label>
+        </div>
+
+        <div class="password-requirements">
+            <strong><i class="fas fa-shield-alt me-2"></i>Требования к паролю:</strong>
+            <ul>
+<!--                <li>Минимум 8 символов</li>-->
+                <li>Используйте буквы и цифры</li>
+            </ul>
+        </div>
+
+        <button type="submit" class="btn btn-register text-white">
+            <i class="fas fa-user-plus me-2"></i>Зарегистрироваться
+        </button>
+    </form>
+
+    <div class="auth-footer">
+        <p>Уже есть аккаунт? <a href="{{ url_for('main.login') }}">Войти</a></p>
+        <p class="mt-3"><a href="{{ url_for('main.index') }}"><i class="fas fa-arrow-left me-2"></i>На главную</a></p>
+    </div>
+</div>
+{% endblock %}

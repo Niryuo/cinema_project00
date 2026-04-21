@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>{% if screening %}Редактирование сеанса{% else %}Добавление сеанса{% endif %}</h2>
+<p><strong>Фильм:</strong> {{ movie.title }}</p>
+
+<form method="POST">
+    <label>Зал / кинотеатр</label><br>
+    <input type="text" name="hall_name" value="{{ screening.hall_name if screening else '' }}" required><br><br>
+
+    <label>Дата и время сеанса</label><br>
+    <input type="datetime-local" name="start_time"
+           value="{{ screening.start_time.strftime('%Y-%m-%dT%H:%M') if screening else '' }}" required><br><br>
+
+    <label>Количество рядов</label><br>
+    <input type="number" name="hall_rows" min="1" value="{{ screening.hall_rows if screening else 5 }}" required><br><br>
+
+    <label>Мест в ряду</label><br>
+    <input type="number" name="hall_cols" min="1" value="{{ screening.hall_cols if screening else 10 }}" required><br><br>
+
+    <button type="submit" class="btn btn-cinema">Сохранить</button>
+    <a class="btn btn-outline-cinema" href="{{ url_for('main.movie_detail', id=movie.id) }}">Назад к фильму</a>
+</form>
+{% endblock %}

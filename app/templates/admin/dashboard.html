@@ -1,0 +1,25 @@
+﻿{% extends "base.html" %}
+
+{% block content %}
+<h2>Админ-панель</h2>
+
+<a class="btn btn-cinema" href="{{ url_for('main.add_movie') }}">Добавить фильм</a>
+
+<hr>
+
+<h3>Все фильмы:</h3>
+
+{% for movie in movies %}
+    <div>
+        <strong>{{ movie.title }}</strong>
+        <p>{{ movie.duration }} мин</p>
+
+        <a href="{{ url_for('main.movie_detail', id=movie.id) }}">Открыть страницу фильма</a> |
+        <a href="{{ url_for('main.edit_movie', id=movie.id) }}">Редактировать</a> |
+        <a href="{{ url_for('main.delete_movie', id=movie.id) }}">Удалить</a>
+
+        <hr>
+    </div>
+{% endfor %}
+
+{% endblock %}

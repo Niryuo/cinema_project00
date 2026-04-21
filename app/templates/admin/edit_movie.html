@@ -1,0 +1,31 @@
+﻿{% extends "base.html" %}
+
+{% block content %}
+<h2>Редактирование фильма</h2>
+
+<form method="POST" class="mb-4">
+    <input type="text" name="title" value="{{ movie.title }}"><br><br>
+    <textarea name="description">{{ movie.description }}</textarea><br><br>
+    <input type="number" name="duration" value="{{ movie.duration }}"><br><br>
+
+    <button type="submit" class="btn btn-cinema">Сохранить</button>
+    <a href="{{ url_for('main.admin_panel') }}" class="btn btn-outline-cinema">Назад</a>
+</form>
+
+<hr>
+
+<h3>Сеансы фильма</h3>
+<a class="btn btn-cinema mb-3" href="{{ url_for('main.add_screening', movie_id=movie.id) }}">Добавить сеанс</a>
+
+{% if screenings %}
+    {% for screening in screenings %}
+        <div class="mb-2">
+            <strong>{{ screening.start_time.strftime('%d.%m.%Y %H:%M') }}</strong>, {{ screening.hall_name }}
+            ({{ screening.hall_rows }}x{{ screening.hall_cols }})
+            — <a href="{{ url_for('main.edit_screening', screening_id=screening.id) }}">Редактировать зал</a>
+        </div>
+    {% endfor %}
+{% else %}
+    <p>Сеансов пока нет.</p>
+{% endif %}
+{% endblock %}
