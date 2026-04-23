@@ -1,4 +1,5 @@
 from datetime import datetime
+import secrets
 from app import db
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, flash, redirect, render_template, request, url_for
@@ -106,8 +107,51 @@ def login():
 @main.route("/dashboard")
 @login_required
 def dashboard():
-    flash(f"Добро пожаловать, {current_user.username}!", "success")
-    return redirect(url_for("main.index"))
+    # flash(f"Добро пожаловать, {current_user.username}!", "success")
+    # return redirect(url_for("main.index"))
+    return redirect(url_for("main.profile"))
+
+
+def _ensure_loyalty_card(user):
+    if user.loyalty_card_number:
+        return
+
+    while True:
+        candidate = f"CP-{secrets.randbelow(10 ** 10):010d}"
+        exists = User.query.filter_by(loyalty_card_number=candidate).first()
+        if not exists:
+            user.loyalty_card_number = candidate
+            break
+
+
+@main.route("/profile")
+@login_required
+def profile():
+    _ensure_loyalty_card(current_user)
+    current_user.update_loyalty_status()
+    db.session.commit()
+
+    bookings = (
+        Booking.query.join(Screening).join(Movie)
+        .filter(Booking.user_id == current_user.id)
+        .order_by(Booking.created_at.desc())
+        .all()
+    )
+
+    movie_history = (
+        Movie.query.join(Screening).join(Booking)
+        .filter(Booking.user_id == current_user.id)
+        .distinct()
+        .order_by(Movie.title.asc())
+        .all()
+    )
+
+    return render_template(
+        "profile.html",
+        bookings=bookings,
+        movie_history=movie_history,
+        status_meta=current_user.status_meta(),
+    )
 
 
 @main.route("/logout")
@@ -291,7 +335,12 @@ def book_seat(screening_id):
         seat_row=seat_row,
         seat_col=seat_col,
     )
+    _ensure_loyalty_card(current_user)
+    current_user.loyalty_points += 100
+    current_user.cashback_balance += 20.0
+
     db.session.add(booking)
+    current_user.update_loyalty_status()
     db.session.commit()
 
     flash(f"Место Ряд {seat_row}, Место {seat_col} успешно забронировано", "success")
@@ -318,6 +367,7 @@ def cancel_booking(booking_id):
     booking.status = "cancelled"
     booking.cancel_reason = cancel_reason
     booking.canceled_at = datetime.utcnow()
+    current_user.update_loyalty_status()
     db.session.commit()
 
     flash("Бронирование отменено", "success")

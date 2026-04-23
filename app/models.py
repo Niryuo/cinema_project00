@@ -19,6 +19,10 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
 
     role = db.Column(db.String(20), default="user")  # user / admin
+    loyalty_card_number = db.Column(db.String(32), unique=True)
+    loyalty_points = db.Column(db.Integer, nullable=False, default=0)
+    cashback_balance = db.Column(db.Float, nullable=False, default=0.0)
+    loyalty_status = db.Column(db.String(20), nullable=False, default="guest")
 
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
@@ -29,6 +33,30 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def total_active_bookings(self):
+        return sum(1 for booking in self.bookings if booking.status == "active")
+
+    def update_loyalty_status(self):
+        active_bookings = self.total_active_bookings()
+        if active_bookings >= 20:
+            self.loyalty_status = "legend"
+        elif active_bookings >= 10:
+            self.loyalty_status = "fan"
+        elif active_bookings >= 5:
+            self.loyalty_status = "newbie"
+        else:
+            self.loyalty_status = "guest"
+
+    def status_meta(self):
+        mapping = {
+            "guest": {"label": "Гость", "discount": 0, "cashback": 0},
+            "newbie": {"label": "Новичок", "discount": 3, "cashback": 2},
+            "fan": {"label": "Любитель кино", "discount": 5, "cashback": 3},
+            "legend": {"label": "Кино-легенда", "discount": 10, "cashback": 5},
+        }
+        return mapping.get(self.loyalty_status, mapping["guest"])
+
 
 class Movie(db.Model):
     __tablename__ = "movies"
