@@ -79,7 +79,9 @@ def register():
 
         db.session.add(new_user)
         db.session.commit()
-        return redirect(url_for("main.login"))
+        login_user(new_user)
+        flash(f"Добро пожаловать, {new_user.username}!", "success")
+        return redirect(url_for("main.index"))
     return render_template("register.html")
 
 
@@ -94,7 +96,8 @@ def login():
 
         if user and user.check_password(password):
             login_user(user)
-            return redirect(url_for("main.dashboard"))
+            flash(f"Добро пожаловать, {user.username}!", "success")
+            return redirect(url_for("main.index"))
         flash("Неверные данные", "danger")
 
     return render_template("login.html")
@@ -103,7 +106,8 @@ def login():
 @main.route("/dashboard")
 @login_required
 def dashboard():
-    return f"Добро пожаловать, {current_user.username}!"
+    flash(f"Добро пожаловать, {current_user.username}!", "success")
+    return redirect(url_for("main.index"))
 
 
 @main.route("/logout")

@@ -47,6 +47,12 @@
 
 {% block content %}
 <h2 class="mb-3">{{ movie.title }}</h2>
+{% if movie.poster_path %}
+<img src="{{ url_for('static', filename=movie.poster_path) }}"
+     alt="Постер {{ movie.title }}"
+     class="img-fluid rounded mb-3"
+     style="max-height: 420px; object-fit: cover;">
+{% endif %}
 <p>{{ movie.description }}</p>
 <p><strong>Длительность:</strong> {{ movie.duration }} мин</p>
 

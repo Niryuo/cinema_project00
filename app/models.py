@@ -36,6 +36,7 @@ class Movie(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
+    poster_path = db.Column(db.String(255))
     duration = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 

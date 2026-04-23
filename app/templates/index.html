@@ -185,7 +185,12 @@
     <div class="col-lg-4 col-md-6">
         <a class="movie-card d-block text-decoration-none" href="{{ url_for('main.movie_detail', id=movie.id) }}">
             <div class="movie-poster">
-                <i class="fas fa-film"></i>
+                 {% if movie.poster_path %}
+                    <img src="{{ url_for('static', filename=movie.poster_path) }}" alt="Постер {{ movie.title }}" class="w-100 h-100" style="object-fit: cover;">
+                {% else %}
+                    <i class="fas fa-film"></i>
+                {% endif %}
+
             </div>
             <div class="movie-info">
                 <h3 class="movie-title">{{ movie.title }}</h3>

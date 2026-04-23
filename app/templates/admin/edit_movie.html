@@ -3,10 +3,18 @@
 {% block content %}
 <h2>Редактирование фильма</h2>
 
-<form method="POST" class="mb-4">
+<form method="POST" class="mb-4" enctype="multipart/form-data">
     <input type="text" name="title" value="{{ movie.title }}"><br><br>
     <textarea name="description">{{ movie.description }}</textarea><br><br>
     <input type="number" name="duration" value="{{ movie.duration }}"><br><br>
+    <label for="poster">Новое фото фильма:</label><br>
+    <input type="file" id="poster" name="poster" accept="image/*"><br>
+    {% if movie.poster_path %}
+        <small>Текущее фото:</small><br>
+        <img src="{{ url_for('static', filename=movie.poster_path) }}" alt="Постер {{ movie.title }}" style="max-height: 180px;"><br><br>
+    {% else %}
+        <br>
+    {% endif %}
 
     <button type="submit" class="btn btn-cinema">Сохранить</button>
     <a href="{{ url_for('main.admin_panel') }}" class="btn btn-outline-cinema">Назад</a>
