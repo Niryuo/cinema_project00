@@ -185,28 +185,34 @@ def add_movie():
         description = request.form.get("description")
         duration = request.form.get("duration")
 
-        file = request.files.get("poster")
+        file = request.files.get("poster")  # ВОТ ЭТА СТРОКА
 
         poster_path = None
+
         if file and file.filename != "":
+            import os
+            import uuid
+            from werkzeug.utils import secure_filename
+
             filename = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
-            filename = os.path.join(UPLOAD_FOLDER, filename)
+            filepath = os.path.join("app/static/uploads", filename)
 
             file.save(filepath)
 
             poster_path = f"uploads/{filename}"
+
         movie = Movie(
             title=title,
             description=description,
             duration=int(duration),
-            poster_path = poster_path
+            poster_path=poster_path
         )
 
         db.session.add(movie)
         db.session.commit()
 
         flash("Фильм добавлен", "success")
-        return redirect(url_for("main.add_screening", movie_id=movie.id))
+        return redirect(url_for("main.admin_panel"))
 
     return render_template("add_movie.html")
 
