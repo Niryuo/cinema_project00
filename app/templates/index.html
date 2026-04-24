@@ -184,14 +184,15 @@
     {% for movie in movies %}
     <div class="col-lg-4 col-md-6">
         <a class="movie-card d-block text-decoration-none" href="{{ url_for('main.movie_detail', id=movie.id) }}">
+
             <div class="movie-poster">
-              {% if movie.poster_path %}
-                <img src="{{ url_for('static', filename=movie.poster_path) }}" width="200">
-              {% endif %}
+                {% if movie.poster_path %}
+                    <img src="{{ url_for('static', filename=movie.poster_path) }}" width="200">
+                {% else %}
                     <i class="fas fa-film"></i>
                 {% endif %}
-
             </div>
+
             <div class="movie-info">
                 <h3 class="movie-title">{{ movie.title }}</h3>
                 <p class="movie-description">{{ movie.description }}</p>
@@ -200,10 +201,12 @@
                     {{ movie.duration }} мин
                 </div>
             </div>
+
         </a>
     </div>
     {% endfor %}
 </div>
+
 {% else %}
 <div class="no-movies">
     <i class="fas fa-film"></i>
@@ -211,4 +214,5 @@
     <p>Следите за обновлениями. Мы добавляем новые фильмы каждый день!</p>
 </div>
 {% endif %}
+
 {% endblock %}
