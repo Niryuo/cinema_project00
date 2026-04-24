@@ -165,7 +165,8 @@
         <p>Заполните информацию о фильме</p>
     </div>
 
- <form method="POST" action="{{ url_for('main.add_movie') }}" enctype="multipart/form-data">
+ <form method="POST" enctype="multipart/form-data">
+     <input type="file" name="poster">
         <div class="form-group">
             <label class="form-label" for="title">
                 <i class="fas fa-heading"></i>Название фильма

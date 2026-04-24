@@ -5,7 +5,11 @@ from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from app.models import Booking, Movie, Screening, User
+import os
+import uuid
+from werkzeug.utils import secure_filename
 
+UPLOAD_FOLDER = "app/static/uploads"
 
 
 main = Blueprint("main", __name__)
@@ -181,10 +185,21 @@ def add_movie():
         description = request.form.get("description")
         duration = request.form.get("duration")
 
+        file = request.files.get("poster")
+
+        poster_path = None
+        if file and file.filename != "":
+            filename = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
+            filename = os.path.join(UPLOAD_FOLDER, filename)
+
+            file.save(filepath)
+
+            poster_path = f"uploads/{filename}"
         movie = Movie(
             title=title,
             description=description,
-            duration=int(duration)
+            duration=int(duration),
+            poster_path = poster_path
         )
 
         db.session.add(movie)
