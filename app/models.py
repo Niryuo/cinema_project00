@@ -10,27 +10,18 @@ def load_user(user_id):
 
 class User(UserMixin, db.Model):
     __tablename__ = "users"
-
     id = db.Column(db.Integer, primary_key=True)
-
     username = db.Column(db.String(100), unique=True, nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
-
     password_hash = db.Column(db.String(255), nullable=False)
-
     role = db.Column(db.String(20), default="user")  # user / admin
     loyalty_card_number = db.Column(db.String(32), unique=True)
     loyalty_points = db.Column(db.Integer, nullable=False, default=0)
     cashback_balance = db.Column(db.Float, nullable=False, default=0.0)
     loyalty_status = db.Column(db.String(20), nullable=False, default="guest")
-
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-
-    bookings = db.relationship(
-        'Booking',
-        back_populates='user',
-        foreign_keys='Booking.user_id'
-    )
+    bookings = db.relationship("Booking", back_populates="user", foreign_keys="Booking.user_id", cascade="all, delete-orphan")
+    feedback_requests = db.relationship("FeedbackRequest", back_populates="user", cascade="all, delete-orphan")
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -63,20 +54,17 @@ class User(UserMixin, db.Model):
 
 class Movie(db.Model):
     __tablename__ = "movies"
-
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     poster_path = db.Column(db.String(255))
     duration = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-
     screenings = db.relationship("Screening", back_populates="movie", cascade="all, delete-orphan")
 
 
 class Screening(db.Model):
     __tablename__ = "screenings"
-
     id = db.Column(db.Integer, primary_key=True)
     movie_id = db.Column(db.Integer, db.ForeignKey("movies.id"), nullable=False)
     hall_name = db.Column(db.String)
@@ -86,14 +74,12 @@ class Screening(db.Model):
     ticket_price = db.Column(db.Float, nullable=False, default=450.0)
     poster_override_path = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-
     movie = db.relationship("Movie", back_populates="screenings")
     bookings = db.relationship("Booking", back_populates="screening", cascade="all, delete-orphan")
 
 
 class Booking(db.Model):
     __tablename__ = "bookings"
-
     id = db.Column(db.Integer, primary_key=True)
 
     screening_id = db.Column(
@@ -121,17 +107,15 @@ class Booking(db.Model):
 
     receipt_issued_at = db.Column(db.DateTime)
     receipt_issued_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-
+    refunded_at = db.Column(db.DateTime)
+    refund_amount = db.Column(db.Float)
+    refund_reason = db.Column(db.Text)
     cancel_reason = db.Column(db.Text)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     canceled_at = db.Column(db.DateTime)
 
-    # relationships
-    user = db.relationship(
-        "User",
-        back_populates="bookings",
-        foreign_keys=[user_id]
-    )
+    user = db.relationship("User", back_populates="bookings", foreign_keys=[user_id])
+    receipt_issued_by = db.relationship("User", foreign_keys=[receipt_issued_by_id])
 
     screening = db.relationship(
         "Screening",
@@ -142,4 +126,16 @@ class Booking(db.Model):
         "User",
         foreign_keys=[receipt_issued_by_id]
     )
+class FeedbackRequest(db.Model):
+    __tablename__ = "feedback_requests"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    subject = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    contact_type = db.Column(db.String(20), nullable=False, default="email")
+    status = db.Column(db.String(20), nullable=False, default="new")
+    admin_comment = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    handled_at = db.Column(db.DateTime)
 
+    user = db.relationship("User", back_populates="feedback_requests")

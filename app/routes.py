@@ -6,7 +6,7 @@ import uuid
 from email.message import EmailMessage
 
 from app import db
-from app.models import Booking, Movie, Screening, User
+from app.models import Booking, FeedbackRequest, Movie, Screening, User
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
