@@ -229,7 +229,7 @@ def admin_panel():
         return "Доступ запрещён", 403
     movies = Movie.query.order_by(Movie.created_at.desc()).all()
     latest_bookings = (
-        Booking.query.join(User).join(Screening).join(Movie)
+        Booking.query.join(Booking.user).join(Screening).join(Movie)
         .order_by(Booking.created_at.desc())
         .limit(200)
         .all()

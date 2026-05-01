@@ -26,8 +26,11 @@ class User(UserMixin, db.Model):
 
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
-    bookings = db.relationship("Booking", back_populates="user", cascade="all, delete-orphan")
-
+    bookings = db.relationship(
+        'Booking',
+        back_populates='user',
+        foreign_keys='Booking.user_id'
+    )
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -92,23 +95,51 @@ class Booking(db.Model):
     __tablename__ = "bookings"
 
     id = db.Column(db.Integer, primary_key=True)
-    screening_id = db.Column(db.Integer, db.ForeignKey("screenings.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    screening_id = db.Column(
+        db.Integer,
+        db.ForeignKey("screenings.id"),
+        nullable=False
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False
+    )
+
     seat_row = db.Column(db.Integer, nullable=False)
     seat_col = db.Column(db.Integer, nullable=False)
+
     status = db.Column(db.String(20), nullable=False, default="reserved")
     ticket_code = db.Column(db.String(32), unique=True)
     price_paid = db.Column(db.Float)
+
     confirmed_at = db.Column(db.DateTime)
     paid_at = db.Column(db.DateTime)
     emailed_at = db.Column(db.DateTime)
+
     receipt_issued_at = db.Column(db.DateTime)
     receipt_issued_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+
     cancel_reason = db.Column(db.Text)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     canceled_at = db.Column(db.DateTime)
 
-    screening = db.relationship("Screening", back_populates="bookings")
-    user = db.relationship("User", back_populates="bookings", foreign_keys=[user_id])
-    receipt_issued_by = db.relationship("User", foreign_keys=[receipt_issued_by_id])
+    # relationships
+    user = db.relationship(
+        "User",
+        back_populates="bookings",
+        foreign_keys=[user_id]
+    )
+
+    screening = db.relationship(
+        "Screening",
+        back_populates="bookings"
+    )
+
+    receipt_issued_by = db.relationship(
+        "User",
+        foreign_keys=[receipt_issued_by_id]
+    )
 
