@@ -107,6 +107,20 @@
                         </form>
                     {% elif booking.status == 'confirmed' %}
                         <form method="POST" action="{{ url_for('main.pay_booking', booking_id=booking.id) }}" class="mb-2">
+                            <div class="mb-2">
+                                <label class="form-label">Баллы лояльности</label>
+                                <select name="payment_mode" class="form-select">
+                                    <option value="save">Копить баллы</option>
+                                    <option value="use">Списать баллы (если есть)</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Проверка оплаты (демо)</label>
+                                <select name="simulate_payment" class="form-select">
+                                    <option value="ok">Оплата проходит</option>
+                                    <option value="fail">Оплата не проходит (нет денег)</option>
+                                </select>
+                            </div>
                             <button type="submit" class="btn btn-cinema">Оплатить {{ '%.2f'|format(booking.screening.ticket_price) }} ₽</button>
                         </form>
                     {% elif booking.status == 'paid' %}

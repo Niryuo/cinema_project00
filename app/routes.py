@@ -6,7 +6,7 @@ import uuid
 from email.message import EmailMessage
 
 from app import db
-from app.models import Booking, FeedbackRequest, Movie, Screening, User
+from app.models import Booking, FeedbackRequest, Movie, RefundLog, Screening, User
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -234,8 +234,8 @@ def admin_panel():
         .limit(200)
         .all()
     )
-    return render_template("admin/dashboard.html", movies=movies, latest_bookings=latest_bookings)
-
+    feedback_requests = FeedbackRequest.query.order_by(FeedbackRequest.created_at.desc()).limit(200).all()
+    return render_template("admin/dashboard.html", movies=movies, latest_bookings=latest_bookings, feedback_requests=feedback_requests)
 
 
 @main.route("/add_movie", methods=["GET", "POST"])
@@ -454,13 +454,28 @@ def pay_booking(booking_id):
         flash("Сначала подтвердите бронирование", "danger")
         return redirect(url_for("main.movie_detail", id=booking.screening.movie_id))
 
+    payment_mode = request.form.get("payment_mode", "save")
+    simulated_result = request.form.get("simulate_payment", "ok")
+
+    if simulated_result == "fail":
+        flash("Оплата не прошла: недостаточно средств на карте. Бронь сохранена в статусе 'Подтверждено'.", "danger")
+        return redirect(url_for("main.movie_detail", id=booking.screening.movie_id))
+
+    ticket_price = booking.screening.ticket_price
+    points_to_use = 0
+    if payment_mode == "use" and current_user.loyalty_points > 0:
+        points_to_use = min(current_user.loyalty_points, int(ticket_price))
+
     booking.status = "paid"
     booking.paid_at = datetime.utcnow()
-    booking.price_paid = booking.screening.ticket_price
+    booking.price_paid = ticket_price - points_to_use
     booking.ticket_code = _generate_ticket_code()
 
     _ensure_loyalty_card(current_user)
-    current_user.loyalty_points += int(booking.price_paid)
+    if points_to_use:
+        current_user.loyalty_points -= points_to_use
+    else:
+        current_user.loyalty_points += int(booking.price_paid)
     current_user.cashback_balance += booking.price_paid * 0.05
     current_user.update_loyalty_status()
 
@@ -493,6 +508,60 @@ def issue_receipt(booking_id):
     flash(f"Чек по билету {booking.ticket_code} выдан", "success")
     return redirect(url_for("main.admin_panel"))
 
+@main.route("/feedback", methods=["POST"])
+@login_required
+def send_feedback():
+    subject = request.form.get("subject", "").strip()
+    message = request.form.get("message", "").strip()
+    topic = request.form.get("topic", "question")
+    preferred_contact = request.form.get("preferred_contact", "email")
+
+    if not subject or not message:
+        flash("Укажите тему и текст обращения", "danger")
+        return redirect(url_for("main.profile"))
+
+    feedback = FeedbackRequest(
+        user_id=current_user.id,
+        topic=topic,
+        preferred_contact=preferred_contact,
+        subject=subject,
+        message=message,
+    )
+    db.session.add(feedback)
+    db.session.commit()
+    flash("Заявка отправлена администратору", "success")
+    return redirect(url_for("main.profile"))
+
+
+@main.route("/admin/bookings/<int:booking_id>/refund", methods=["POST"])
+@login_required
+def admin_refund_booking(booking_id):
+    if not _admin_required():
+        return "Доступ запрещён", 403
+
+    booking = Booking.query.get_or_404(booking_id)
+    if booking.status != "paid":
+        flash("Возврат доступен только для оплаченных билетов", "danger")
+        return redirect(url_for("main.admin_panel"))
+
+    reason = request.form.get("reason", "").strip() or "Возврат по запросу"
+
+    refund = RefundLog(
+        booking_id=booking.id,
+        admin_id=current_user.id,
+        amount=booking.price_paid or 0,
+        reason=reason,
+    )
+
+    booking.status = "refunded"
+    booking.canceled_at = datetime.utcnow()
+    booking.cancel_reason = f"Возврат админом: {reason}"
+    booking.ticket_code = None
+
+    db.session.add(refund)
+    db.session.commit()
+    flash("Возврат выполнен. Место снова доступно для бронирования.", "success")
+    return redirect(url_for("main.admin_panel"))
 
 @main.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
 @login_required

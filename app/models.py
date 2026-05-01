@@ -128,14 +128,29 @@ class Booking(db.Model):
     )
 class FeedbackRequest(db.Model):
     __tablename__ = "feedback_requests"
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    topic = db.Column(db.String(30), nullable=False, default="question")
+    preferred_contact = db.Column(db.String(20), nullable=False, default="email")
     subject = db.Column(db.String(200), nullable=False)
     message = db.Column(db.Text, nullable=False)
-    contact_type = db.Column(db.String(20), nullable=False, default="email")
     status = db.Column(db.String(20), nullable=False, default="new")
     admin_comment = db.Column(db.Text)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-    handled_at = db.Column(db.DateTime)
 
-    user = db.relationship("User", back_populates="feedback_requests")
+    user = db.relationship("User")
+
+
+class RefundLog(db.Model):
+    __tablename__ = "refund_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey("bookings.id"), nullable=False)
+    admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    reason = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    booking = db.relationship("Booking")
+    admin = db.relationship("User")

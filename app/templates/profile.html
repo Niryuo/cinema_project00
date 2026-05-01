@@ -1,6 +1,33 @@
 {% extends "base.html" %}
 
-{% block title %}Личный кабинет - Cinema Project{% endblock %}
+{% block title %}Личный кабинет - Cinema Project
+<div class="card mt-4" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(229, 9, 20, 0.2);">
+    <div class="card-body">
+        <h4 class="card-title mb-3">Обратная связь</h4>
+        <p class="text-secondary">Вы можете написать по вопросу или по билету. Админ свяжется с вами по email или лично в кинотеатре.</p>
+        <form method="POST" action="{{ url_for('main.send_feedback') }}">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <select class="form-select" name="topic">
+                        <option value="question">Вопрос</option>
+                        <option value="ticket">Проблема с билетом</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="preferred_contact">
+                        <option value="email">Связь по почте</option>
+                        <option value="in_person">Лично у администратора</option>
+                    </select>
+                </div>
+                <div class="col-md-6"><input class="form-control" name="subject" placeholder="Тема" required></div>
+            </div>
+            <textarea class="form-control mt-2" name="message" rows="4" placeholder="Опишите вопрос или проблему" required></textarea>
+            <button type="submit" class="btn btn-cinema mt-2">Отправить заявку</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
 
 {% block content %}
 <h2 class="mb-4">Личный кабинет</h2>
@@ -96,4 +123,31 @@
         {% endif %}
     </div>
 </div>
+
+<div class="card mt-4" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(229, 9, 20, 0.2);">
+    <div class="card-body">
+        <h4 class="card-title mb-3">Обратная связь</h4>
+        <p class="text-secondary">Вы можете написать по вопросу или по билету. Админ свяжется с вами по email или лично в кинотеатре.</p>
+        <form method="POST" action="{{ url_for('main.send_feedback') }}">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <select class="form-select" name="topic">
+                        <option value="question">Вопрос</option>
+                        <option value="ticket">Проблема с билетом</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="preferred_contact">
+                        <option value="email">Связь по почте</option>
+                        <option value="in_person">Лично у администратора</option>
+                    </select>
+                </div>
+                <div class="col-md-6"><input class="form-control" name="subject" placeholder="Тема" required></div>
+            </div>
+            <textarea class="form-control mt-2" name="message" rows="4" placeholder="Опишите вопрос или проблему" required></textarea>
+            <button type="submit" class="btn btn-cinema mt-2">Отправить заявку</button>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
