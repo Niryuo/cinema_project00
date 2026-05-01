@@ -1,18 +1,85 @@
 from datetime import datetime
+import os
 import secrets
+import smtplib
+import uuid
+from email.message import EmailMessage
+
 from app import db
+from app.models import Booking, Movie, Screening, User
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
-from app.models import Booking, Movie, Screening, User
-import os
-import uuid
 from werkzeug.utils import secure_filename
 
 UPLOAD_FOLDER = "app/static/uploads"
 
-
 main = Blueprint("main", __name__)
+
+def _admin_required():
+    if current_user.role != "admin":
+        return False
+    return True
+
+
+def _ensure_loyalty_card(user):
+    if user.loyalty_card_number:
+        return
+
+    while True:
+        candidate = f"CP-{secrets.randbelow(10 ** 10):010d}"
+        exists = User.query.filter_by(loyalty_card_number=candidate).first()
+        if not exists:
+            user.loyalty_card_number = candidate
+            break
+
+
+def _generate_ticket_code():
+    while True:
+        code = f"CP-TKT-{secrets.token_hex(4).upper()}"
+        if not Booking.query.filter_by(ticket_code=code).first():
+            return code
+
+
+def _save_upload(file_storage):
+    if not file_storage or file_storage.filename == "":
+        return None
+
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    filename = f"{uuid.uuid4()}_{secure_filename(file_storage.filename)}"
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file_storage.save(filepath)
+    return f"uploads/{filename}"
+
+
+def _send_ticket_email(booking):
+    sender = os.getenv("MAIL_SENDER", "no-reply@cinema-project.local")
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = int(os.getenv("SMTP_PORT", "25"))
+
+    subject = f"Ваш билет #{booking.ticket_code}"
+    body = (
+        f"Здравствуйте, {booking.user.username}!\n\n"
+        f"Ваш билет готов.\n"
+        f"Фильм: {booking.screening.movie.title}\n"
+        f"Сеанс: {booking.screening.start_time.strftime('%d.%m.%Y %H:%M')}\n"
+        f"Зал: {booking.screening.hall_name}\n"
+        f"Место: ряд {booking.seat_row}, место {booking.seat_col}\n"
+        f"Стоимость: {booking.price_paid:.2f} ₽\n"
+        f"Код билета: {booking.ticket_code}\n"
+    )
+
+    if smtp_host:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = sender
+        msg["To"] = booking.user.email
+        msg.set_content(body)
+
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as smtp:
+            smtp.send_message(msg)
+
+    return True
 
 
 @main.route("/")
@@ -32,11 +99,16 @@ def movie_detail(id):
     if current_user.is_authenticated:
         user_booking_ids = {
             booking.id
-            for booking in Booking.query.filter_by(user_id=current_user.id, status="active").all()
-        }
+            for booking in Booking.query.filter(
+                Booking.user_id == current_user.id,
+                Booking.status.in_(["reserved", "confirmed", "paid"]),
+            ).all()}
 
     for screening in screenings:
-        active_bookings = Booking.query.filter_by(screening_id=screening.id, status="active").all()
+        active_bookings = Booking.query.filter(
+            Booking.screening_id == screening.id,
+            Booking.status.in_(["reserved", "confirmed", "paid"]),
+        ).all()
         occupied = {(booking.seat_row, booking.seat_col): booking for booking in active_bookings}
         screenings_data.append({"screening": screening, "occupied": occupied})
 
@@ -46,7 +118,7 @@ def movie_detail(id):
             Booking.query.join(Screening)
             .filter(
                 Booking.user_id == current_user.id,
-                Booking.status == "active",
+                Booking.status.in_(["reserved", "confirmed", "paid"]),
                 Screening.movie_id == movie.id,
             )
             .order_by(Screening.start_time.asc())
@@ -111,23 +183,7 @@ def login():
 @main.route("/dashboard")
 @login_required
 def dashboard():
-    # flash(f"Добро пожаловать, {current_user.username}!", "success")
-    # return redirect(url_for("main.index"))
     return redirect(url_for("main.profile"))
-
-
-def _ensure_loyalty_card(user):
-    if user.loyalty_card_number:
-        return
-
-    while True:
-        candidate = f"CP-{secrets.randbelow(10 ** 10):010d}"
-        exists = User.query.filter_by(loyalty_card_number=candidate).first()
-        if not exists:
-            user.loyalty_card_number = candidate
-            break
-
-
 @main.route("/profile")
 @login_required
 def profile():
@@ -149,10 +205,12 @@ def profile():
         .order_by(Movie.title.asc())
         .all()
     )
+    paid_bookings = [b for b in bookings if b.status == "paid"]
 
     return render_template(
         "profile.html",
         bookings=bookings,
+        paid_bookings=paid_bookings,
         movie_history=movie_history,
         status_meta=current_user.status_meta(),
     )
@@ -167,45 +225,37 @@ def logout():
 @main.route("/admin")
 @login_required
 def admin_panel():
-    if current_user.role != "admin":
+    if not _admin_required():
         return "Доступ запрещён", 403
     movies = Movie.query.order_by(Movie.created_at.desc()).all()
-    return render_template("admin/dashboard.html", movies=movies)
+    latest_bookings = (
+        Booking.query.join(User).join(Screening).join(Movie)
+        .order_by(Booking.created_at.desc())
+        .limit(200)
+        .all()
+    )
+    return render_template("admin/dashboard.html", movies=movies, latest_bookings=latest_bookings)
 
 
 
 @main.route("/add_movie", methods=["GET", "POST"])
 @login_required
 def add_movie():
-    if current_user.role != "admin":
+    if not _admin_required():
         return "Доступ запрещён", 403
 
     if request.method == "POST":
         title = request.form.get("title")
         description = request.form.get("description")
-        duration = request.form.get("duration")
+        duration = int(request.form.get("duration"))
+        poster_path = _save_upload(request.files.get("poster"))
 
-        file = request.files.get("poster")  # ВОТ ЭТА СТРОКА
-
-        poster_path = None
-
-        if file and file.filename != "":
-            import os
-            import uuid
-            from werkzeug.utils import secure_filename
-
-            filename = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
-            filepath = os.path.join("app/static/uploads", filename)
-
-            file.save(filepath)
-
-            poster_path = f"uploads/{filename}"
 
         movie = Movie(
             title=title,
             description=description,
-            duration=int(duration),
-            poster_path=poster_path
+            duration=duration,
+            poster_path=poster_path,
         )
 
         db.session.add(movie)
@@ -219,7 +269,7 @@ def add_movie():
 @main.route("/delete_movie/<int:id>")
 @login_required
 def delete_movie(id):
-    if current_user.role != "admin":
+    if not _admin_required():
         return "Доступ запрещён", 403
 
     movie = Movie.query.get_or_404(id)
@@ -230,14 +280,10 @@ def delete_movie(id):
     return redirect(url_for("main.admin_panel"))
 
 
-    screenings = Screening.query.filter_by(movie_id=movie.id).order_by(Screening.start_time.asc()).all()
-    return render_template("admin/edit_movie.html", movie=movie, screenings=screenings)
-
-
 @main.route("/admin/movies/<int:movie_id>/screenings/add", methods=["GET", "POST"])
 @login_required
 def add_screening(movie_id):
-    if current_user.role != "admin":
+    if not _admin_required():
         return "Доступ запрещён", 403
 
     movie = Movie.query.get_or_404(movie_id)
@@ -249,6 +295,7 @@ def add_screening(movie_id):
             hall_rows = int(request.form.get("hall_rows"))
             hall_cols = int(request.form.get("hall_cols"))
 
+            ticket_price = float(request.form.get("ticket_price"))
             start_time = datetime.strptime(start_time_raw, "%Y-%m-%dT%H:%M")
 
             screening = Screening(
@@ -257,6 +304,7 @@ def add_screening(movie_id):
                 start_time=start_time,
                 hall_rows=hall_rows,
                 hall_cols=hall_cols,
+                ticket_price=ticket_price,
             )
 
             db.session.add(screening)
@@ -265,8 +313,7 @@ def add_screening(movie_id):
             flash("Сеанс добавлен", "success")
             return redirect(url_for("main.movie_detail", id=movie.id))
 
-        except Exception as e:
-            print("ERROR:", e)
+        except Exception:
             flash("Ошибка при добавлении сеанса", "danger")
             return redirect(url_for("main.add_screening", movie_id=movie.id))
 
@@ -276,7 +323,7 @@ def add_screening(movie_id):
 @main.route("/edit_movie/<int:id>", methods=["GET", "POST"])
 @login_required
 def edit_movie(id):
-    if current_user.role != "admin":
+    if not _admin_required():
         return "Доступ запрещён", 403
 
     movie = Movie.query.get_or_404(id)
@@ -286,14 +333,21 @@ def edit_movie(id):
         movie.description = request.form.get("description")
         movie.duration = int(request.form.get("duration"))
 
+        new_poster = _save_upload(request.files.get("poster"))
+        if new_poster:
+            movie.poster_path = new_poster
+
         db.session.commit()
-        return redirect(url_for("main.admin_dashboard"))
-    return render_template("admin/edit_screening.html", movie=movie, screening=None)
+        flash("Фильм обновлен", "success")
+        return redirect(url_for("main.edit_movie", id=movie.id))
+
+    screenings = Screening.query.filter_by(movie_id=movie.id).order_by(Screening.start_time.asc()).all()
+    return render_template("admin/edit_movie.html", movie=movie, screenings=screenings)
 
 @main.route("/admin/screenings/<int:screening_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_screening(screening_id):
-    if current_user.role != "admin":
+    if not _admin_required():
         return "Доступ запрещён", 403
 
     screening = Screening.query.get_or_404(screening_id)
@@ -303,6 +357,7 @@ def edit_screening(screening_id):
         start_time_raw = request.form.get("start_time")
         hall_rows = int(request.form.get("hall_rows"))
         hall_cols = int(request.form.get("hall_cols"))
+        ticket_price = float(request.form.get("ticket_price"))
 
         if hall_rows < 1 or hall_cols < 1:
             flash("Размер зала должен быть больше нуля", "danger")
@@ -312,6 +367,11 @@ def edit_screening(screening_id):
         screening.start_time = datetime.strptime(start_time_raw, "%Y-%m-%dT%H:%M")
         screening.hall_rows = hall_rows
         screening.hall_cols = hall_cols
+        screening.ticket_price = ticket_price
+
+        poster_override = _save_upload(request.files.get("screening_poster"))
+        if poster_override:
+            screening.poster_override_path = poster_override
 
         db.session.commit()
         flash("Параметры зала и сеанса обновлены", "success")
@@ -331,20 +391,20 @@ def book_seat(screening_id):
         flash("Некорректное место", "danger")
         return redirect(url_for("main.movie_detail", id=screening.movie_id))
 
-    seat_is_taken = Booking.query.filter_by(
-        screening_id=screening.id,
-        seat_row=seat_row,
-        seat_col=seat_col,
-        status="active",
+    seat_is_taken = Booking.query.filter(
+        Booking.screening_id == screening.id,
+        Booking.seat_row == seat_row,
+        Booking.seat_col == seat_col,
+        Booking.status.in_(["reserved", "confirmed", "paid"]),
     ).first()
     if seat_is_taken:
         flash("Это место уже занято", "danger")
         return redirect(url_for("main.movie_detail", id=screening.movie_id))
 
-    my_bookings_count = Booking.query.filter_by(
-        screening_id=screening.id,
-        user_id=current_user.id,
-        status="active",
+    my_bookings_count = Booking.query.filter(
+        Booking.screening_id == screening.id,
+        Booking.user_id == current_user.id,
+        Booking.status.in_(["reserved", "confirmed", "paid"]),
     ).count()
     if my_bookings_count >= 5:
         flash("Нельзя забронировать больше 5 мест на один сеанс", "danger")
@@ -355,17 +415,83 @@ def book_seat(screening_id):
         user_id=current_user.id,
         seat_row=seat_row,
         seat_col=seat_col,
+        status="reserved",
     )
-    _ensure_loyalty_card(current_user)
-    current_user.loyalty_points += 100
-    current_user.cashback_balance += 20.0
 
     db.session.add(booking)
-    current_user.update_loyalty_status()
     db.session.commit()
 
-    flash(f"Место Ряд {seat_row}, Место {seat_col} успешно забронировано", "success")
+    flash(f"Место Ряд {seat_row}, Место {seat_col} забронировано. Подтвердите и оплатите билет.", "success")
     return redirect(url_for("main.movie_detail", id=screening.movie_id))
+
+@main.route("/bookings/<int:booking_id>/confirm", methods=["POST"])
+@login_required
+def confirm_booking(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    if booking.user_id != current_user.id:
+        return "Доступ запрещён", 403
+
+    if booking.status != "reserved":
+        flash("Подтверждение доступно только для новых броней", "danger")
+        return redirect(url_for("main.movie_detail", id=booking.screening.movie_id))
+
+    booking.status = "confirmed"
+    booking.confirmed_at = datetime.utcnow()
+    db.session.commit()
+
+    flash("Бронирование подтверждено. Можно оплачивать билет.", "success")
+    return redirect(url_for("main.movie_detail", id=booking.screening.movie_id))
+
+
+@main.route("/bookings/<int:booking_id>/pay", methods=["POST"])
+@login_required
+def pay_booking(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    if booking.user_id != current_user.id:
+        return "Доступ запрещён", 403
+
+    if booking.status != "confirmed":
+        flash("Сначала подтвердите бронирование", "danger")
+        return redirect(url_for("main.movie_detail", id=booking.screening.movie_id))
+
+    booking.status = "paid"
+    booking.paid_at = datetime.utcnow()
+    booking.price_paid = booking.screening.ticket_price
+    booking.ticket_code = _generate_ticket_code()
+
+    _ensure_loyalty_card(current_user)
+    current_user.loyalty_points += int(booking.price_paid)
+    current_user.cashback_balance += booking.price_paid * 0.05
+    current_user.update_loyalty_status()
+
+    try:
+        _send_ticket_email(booking)
+        booking.emailed_at = datetime.utcnow()
+        flash("Оплата прошла успешно. Билет отправлен на email и сохранен в личном кабинете.", "success")
+    except Exception:
+        flash("Оплата прошла успешно. Билет сохранен в личном кабинете (email пока не отправлен).", "success")
+
+    db.session.commit()
+    return redirect(url_for("main.profile"))
+
+
+@main.route("/admin/bookings/<int:booking_id>/issue-receipt", methods=["POST"])
+@login_required
+def issue_receipt(booking_id):
+    if not _admin_required():
+        return "Доступ запрещён", 403
+
+    booking = Booking.query.get_or_404(booking_id)
+    if booking.status != "paid":
+        flash("Чек можно выдать только для оплаченного билета", "danger")
+        return redirect(url_for("main.admin_panel"))
+
+    booking.receipt_issued_at = datetime.utcnow()
+    booking.receipt_issued_by_id = current_user.id
+    db.session.commit()
+
+    flash(f"Чек по билету {booking.ticket_code} выдан", "success")
+    return redirect(url_for("main.admin_panel"))
 
 
 @main.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
@@ -376,7 +502,7 @@ def cancel_booking(booking_id):
     if booking.user_id != current_user.id:
         return "Доступ запрещён", 403
 
-    if booking.status != "active":
+    if booking.status  == "cancelled":
         flash("Бронирование уже отменено", "danger")
         return redirect(url_for("main.movie_detail", id=booking.screening.movie_id))
 

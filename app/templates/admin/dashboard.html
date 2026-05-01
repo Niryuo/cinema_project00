@@ -3,23 +3,60 @@
 {% block content %}
 <h2>Админ-панель</h2>
 
-<a class="btn btn-cinema" href="{{ url_for('main.add_movie') }}">Добавить фильм</a>
-
-<hr>
+<div class="d-flex gap-2 mb-4">
+    <a class="btn btn-cinema" href="{{ url_for('main.add_movie') }}">Добавить фильм</a>
+</div>
 
 <h3>Все фильмы:</h3>
-
 {% for movie in movies %}
-    <div>
+    <div class="mb-2">
         <strong>{{ movie.title }}</strong>
-        <p>{{ movie.duration }} мин</p>
-
-        <a href="{{ url_for('main.movie_detail', id=movie.id) }}">Открыть страницу фильма</a> |
-        <a href="{{ url_for('main.edit_movie', id=movie.id) }}">Редактировать</a> |
-        <a href="{{ url_for('main.delete_movie', id=movie.id) }}">Удалить</a>
-
-        <hr>
+         <span class="text-secondary">{{ movie.duration }} мин</span>
+        <div>
+            <a href="{{ url_for('main.movie_detail', id=movie.id) }}">Открыть страницу фильма</a> |
+            <a href="{{ url_for('main.edit_movie', id=movie.id) }}">Редактировать</a> |
+            <a href="{{ url_for('main.delete_movie', id=movie.id) }}">Удалить</a>
+        </div>
     </div>
+    <hr>
 {% endfor %}
 
+<h3 class="mt-4">Бронирования и билеты</h3>
+<div class="table-responsive">
+    <table class="table table-dark table-striped align-middle">
+        <thead>
+        <tr>
+            <th>Клиент</th>
+            <th>Фильм/сеанс</th>
+            <th>Место</th>
+            <th>Статус</th>
+            <th>Билет</th>
+            <th>Чек</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for booking in latest_bookings %}
+            <tr>
+                <td>{{ booking.user.username }}<br><small>{{ booking.user.email }}</small></td>
+                <td>{{ booking.screening.movie.title }}<br><small>{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</small></td>
+                <td>{{ booking.seat_row }}-{{ booking.seat_col }}</td>
+                <td>{{ booking.status }}</td>
+                <td>{{ booking.ticket_code or '—' }}</td>
+                <td>
+                    {% if booking.status == 'paid' %}
+                        <form method="POST" action="{{ url_for('main.issue_receipt', booking_id=booking.id) }}">
+                            <button type="submit" class="btn btn-sm btn-outline-cinema">Выдать чек</button>
+                        </form>
+                        {% if booking.receipt_issued_at %}
+                            <small class="text-success">Выдан: {{ booking.receipt_issued_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                        {% endif %}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

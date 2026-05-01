@@ -35,7 +35,7 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def total_active_bookings(self):
-        return sum(1 for booking in self.bookings if booking.status == "active")
+        return sum(1 for booking in self.bookings if booking.status == "paid")
 
     def update_loyalty_status(self):
         active_bookings = self.total_active_bookings()
@@ -80,6 +80,8 @@ class Screening(db.Model):
     start_time = db.Column(db.DateTime)
     hall_rows = db.Column(db.Integer, nullable=False, default=5)
     hall_cols = db.Column(db.Integer, nullable=False, default=10)
+    ticket_price = db.Column(db.Float, nullable=False, default=450.0)
+    poster_override_path = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     movie = db.relationship("Movie", back_populates="screenings")
@@ -94,11 +96,19 @@ class Booking(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     seat_row = db.Column(db.Integer, nullable=False)
     seat_col = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="active")
+    status = db.Column(db.String(20), nullable=False, default="reserved")
+    ticket_code = db.Column(db.String(32), unique=True)
+    price_paid = db.Column(db.Float)
+    confirmed_at = db.Column(db.DateTime)
+    paid_at = db.Column(db.DateTime)
+    emailed_at = db.Column(db.DateTime)
+    receipt_issued_at = db.Column(db.DateTime)
+    receipt_issued_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     cancel_reason = db.Column(db.Text)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     canceled_at = db.Column(db.DateTime)
 
     screening = db.relationship("Screening", back_populates="bookings")
-    user = db.relationship("User", back_populates="bookings")
+    user = db.relationship("User", back_populates="bookings", foreign_keys=[user_id])
+    receipt_issued_by = db.relationship("User", foreign_keys=[receipt_issued_by_id])
 
