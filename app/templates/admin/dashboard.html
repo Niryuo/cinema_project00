@@ -7,6 +7,47 @@
     <a class="btn btn-cinema" href="{{ url_for('main.add_movie') }}">Добавить фильм</a>
 </div>
 
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-dark text-light border-danger"><div class="card-body">
+            <h6 class="text-secondary">Выручка</h6><div class="fs-4 fw-bold">{{ '%.2f'|format(total_revenue) }} ₽</div>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-dark text-light border-danger"><div class="card-body">
+            <h6 class="text-secondary">Продано билетов</h6><div class="fs-4 fw-bold">{{ total_tickets }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-dark text-light border-danger"><div class="card-body">
+            <h6 class="text-secondary">Фильмов в каталоге</h6><div class="fs-4 fw-bold">{{ movies|length }}</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <h4>Популярные фильмы</h4>
+        <ul class="list-group">
+            {% for title, cnt in popular_movies %}
+                <li class="list-group-item bg-dark text-light d-flex justify-content-between"><span>{{ title }}</span><strong>{{ cnt }}</strong></li>
+            {% else %}
+                <li class="list-group-item bg-dark text-light">Нет оплаченных билетов</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="col-md-6">
+        <h4>Популярные дни</h4>
+        <ul class="list-group">
+            {% for day, cnt in popular_weekdays %}
+                <li class="list-group-item bg-dark text-light d-flex justify-content-between"><span>{{ day }}</span><strong>{{ cnt }}</strong></li>
+            {% else %}
+                <li class="list-group-item bg-dark text-light">Нет данных</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
 <h3>Все фильмы:</h3>
 {% for movie in movies %}
     <div class="mb-2">

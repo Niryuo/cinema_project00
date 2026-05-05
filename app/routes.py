@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import secrets
 import smtplib
@@ -16,6 +16,32 @@ UPLOAD_FOLDER = "app/static/uploads"
 
 main = Blueprint("main", __name__)
 
+
+def _release_expired_bookings(notify_user_id=None):
+    now = datetime.utcnow()
+    expired = (
+        Booking.query.filter(
+            Booking.status == "reserved",
+            Booking.expires_at.isnot(None),
+            Booking.expires_at < now,
+        )
+        .all()
+    )
+
+    expired_count = 0
+    for booking in expired:
+        booking.status = "cancelled"
+        booking.canceled_at = now
+        booking.cancel_reason = "Автоотмена: время подтверждения (15 минут) истекло"
+        expired_count += 1
+
+    if expired_count:
+        db.session.commit()
+
+    if notify_user_id:
+        my_expired = [b for b in expired if b.user_id == notify_user_id]
+        if my_expired:
+            flash(f"{len(my_expired)} бронь(ей) автоматически отменены: 15 минут на подтверждение истекли.", "danger")
 def _admin_required():
     if current_user.role != "admin":
         return False
@@ -84,6 +110,7 @@ def _send_ticket_email(booking):
 
 @main.route("/")
 def index():
+    _release_expired_bookings(notify_user_id=current_user.id if current_user.is_authenticated else None)
     movies = Movie.query.order_by(Movie.created_at.desc()).all()
     return render_template("index.html", movies=movies)
 
@@ -91,6 +118,7 @@ def index():
 
 @main.route("/movies/<int:id>")
 def movie_detail(id):
+    _release_expired_bookings(notify_user_id=current_user.id if current_user.is_authenticated else None)
     movie = Movie.query.get_or_404(id)
     screenings = Screening.query.filter_by(movie_id=movie.id).order_by(Screening.start_time.asc()).all()
 
@@ -187,6 +215,7 @@ def dashboard():
 @main.route("/profile")
 @login_required
 def profile():
+    _release_expired_bookings(notify_user_id=current_user.id)
     _ensure_loyalty_card(current_user)
     current_user.update_loyalty_status()
     db.session.commit()
@@ -225,6 +254,7 @@ def logout():
 @main.route("/admin")
 @login_required
 def admin_panel():
+    _release_expired_bookings()
     if not _admin_required():
         return "Доступ запрещён", 403
     movies = Movie.query.order_by(Movie.created_at.desc()).all()
@@ -235,7 +265,23 @@ def admin_panel():
         .all()
     )
     feedback_requests = FeedbackRequest.query.order_by(FeedbackRequest.created_at.desc()).limit(200).all()
-    return render_template("admin/dashboard.html", movies=movies, latest_bookings=latest_bookings, feedback_requests=feedback_requests)
+    paid_bookings = [b for b in latest_bookings if b.status == "paid"]
+    total_revenue = sum((b.price_paid or 0) for b in paid_bookings)
+    total_tickets = len(paid_bookings)
+
+    movie_stats = {}
+    weekday_stats = {}
+    for booking in paid_bookings:
+        movie_title = booking.screening.movie.title
+        movie_stats[movie_title] = movie_stats.get(movie_title, 0) + 1
+
+        weekday = booking.screening.start_time.strftime("%A")
+        weekday_stats[weekday] = weekday_stats.get(weekday, 0) + 1
+
+    popular_movies = sorted(movie_stats.items(), key=lambda x: x[1], reverse=True)[:5]
+    popular_weekdays = sorted(weekday_stats.items(), key=lambda x: x[1], reverse=True)
+
+    return render_template("admin/dashboard.html", movies=movies, latest_bookings=latest_bookings, feedback_requests=feedback_requests, total_revenue=total_revenue, total_tickets=total_tickets, popular_movies=popular_movies, popular_weekdays=popular_weekdays)
 
 
 @main.route("/add_movie", methods=["GET", "POST"])
@@ -416,12 +462,13 @@ def book_seat(screening_id):
         seat_row=seat_row,
         seat_col=seat_col,
         status="reserved",
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
     )
 
     db.session.add(booking)
     db.session.commit()
 
-    flash(f"Место Ряд {seat_row}, Место {seat_col} забронировано. Подтвердите и оплатите билет.", "success")
+    flash(f"Место Ряд {seat_row}, Место {seat_col} забронировано. На подтверждение есть 15 минут ", "success")
     return redirect(url_for("main.movie_detail", id=screening.movie_id))
 
 @main.route("/bookings/<int:booking_id>/confirm", methods=["POST"])
@@ -431,12 +478,21 @@ def confirm_booking(booking_id):
     if booking.user_id != current_user.id:
         return "Доступ запрещён", 403
 
+    if booking.status == "reserved" and booking.expires_at and booking.expires_at < datetime.utcnow():
+        booking.status = "cancelled"
+        booking.canceled_at = datetime.utcnow()
+        booking.cancel_reason = "Автоотмена: время подтверждения (15 минут) истекло"
+        db.session.commit()
+        flash("Бронирование автоматически отменено: время подтверждения истекло.", "danger")
+        return redirect(url_for("main.movie_detail", id=booking.screening.movie_id))
+
     if booking.status != "reserved":
         flash("Подтверждение доступно только для новых броней", "danger")
         return redirect(url_for("main.movie_detail", id=booking.screening.movie_id))
 
     booking.status = "confirmed"
     booking.confirmed_at = datetime.utcnow()
+    booking.expires_at = None
     db.session.commit()
 
     flash("Бронирование подтверждено. Можно оплачивать билет.", "success")

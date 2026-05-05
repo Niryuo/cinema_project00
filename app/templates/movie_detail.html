@@ -102,6 +102,7 @@
                     </p>
 
                     {% if booking.status == 'reserved' %}
+                                            {% if booking.expires_at %}<p class="text-warning">Подтвердить до: {{ booking.expires_at.strftime('%d.%m.%Y %H:%M') }} UTC</p>{% endif %}
                         <form method="POST" action="{{ url_for('main.confirm_booking', booking_id=booking.id) }}" class="mb-2">
                             <button type="submit" class="btn btn-cinema">Подтвердить место</button>
                         </form>

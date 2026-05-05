@@ -112,6 +112,7 @@ class Booking(db.Model):
     refund_reason = db.Column(db.Text)
     cancel_reason = db.Column(db.Text)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    expires_at = db.Column(db.DateTime)
     canceled_at = db.Column(db.DateTime)
 
     user = db.relationship("User", back_populates="bookings", foreign_keys=[user_id])
