@@ -1,68 +1,327 @@
 {% extends "base.html" %}
 
 {% block title %}Личный кабинет - Cinema Project{% endblock %}
+{% block extra_css %}
+<style>
+    .profile-hero {
+        background: radial-gradient(circle at top left, rgba(255, 215, 0, 0.16), transparent 32%),
+                    radial-gradient(circle at bottom right, rgba(229, 9, 20, 0.18), transparent 34%),
+                    rgba(31, 31, 31, 0.96);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 28px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+        overflow: hidden;
+    }
+
+    .loyalty-card {
+        background: {{ status_meta.gradient }};
+        border-radius: 28px;
+        color: #fff;
+        min-height: 280px;
+        padding: 1.6rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+    }
+
+    .loyalty-card::before,
+    .loyalty-card::after {
+        content: '';
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .loyalty-card::before {
+        width: 180px;
+        height: 180px;
+        top: -70px;
+        right: -45px;
+    }
+
+    .loyalty-card::after {
+        width: 140px;
+        height: 140px;
+        bottom: -55px;
+        left: -35px;
+    }
+
+    .loyalty-card-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .loyalty-number {
+        letter-spacing: 0.16em;
+        font-size: 1.25rem;
+        font-weight: 700;
+    }
+
+    .metric-card,
+    .feedback-card,
+    .history-card {
+        background: rgba(31, 31, 31, 0.94);
+        border: 1px solid rgba(229, 9, 20, 0.18);
+        border-radius: 24px;
+        color: var(--text-primary);
+    }
+
+    .metric-card {
+        padding: 1rem;
+        height: 100%;
+    }
+
+    .metric-icon {
+        width: 46px;
+        height: 46px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        background: rgba(229, 9, 20, 0.15);
+        color: var(--accent-gold);
+        margin-bottom: 0.75rem;
+    }
+
+    .status-step {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 0.85rem;
+    }
+
+    .form-control,
+    .form-select {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: var(--text-primary);
+        border-radius: 16px;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--primary-color);
+        color: var(--text-primary);
+        box-shadow: 0 0 0 0.25rem rgba(229, 9, 20, 0.2);
+    }
+
+    .form-select option {
+        background: #1f1f1f;
+        color: #fff;
+    }
+
+    .ticket-mini {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        padding: 1rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Личный кабинет</h2>
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <p class="text-uppercase text-secondary fw-bold mb-1">Кабинет клиента</p>
+        <h2 class="mb-0">Здравствуйте, {{ current_user.username }}!</h2>
+    </div>
+    <a href="{{ url_for('main.index') }}" class="btn btn-cinema"><i class="fas fa-ticket me-2"></i>Выбрать билет</a>
+</div>
 
-<div class="row g-4 mb-4">
-    <div class="col-lg-8">
-        <div class="card" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(229, 9, 20, 0.2);">
-            <div class="card-body">
-                <h4 class="card-title mb-3">Профиль клиента</h4>
-                <p class="mb-1"><strong>Имя пользователя:</strong> {{ current_user.username }}</p>
-                <p class="mb-3"><strong>Email:</strong> {{ current_user.email }}</p>
+<div class="profile-hero p-3 p-lg-4 mb-4">
+    <div class="row g-4 align-items-stretch">
+        <div class="col-lg-5">
+            <div class="loyalty-card h-100">
+                <div class="loyalty-card-content h-100 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <div class="text-uppercase small opacity-75">Карта лояльности</div>
+                            <div class="loyalty-number mt-2">{{ current_user.loyalty_card_number }}</div>
+                        </div>
+                        <i class="fas {{ status_meta.icon }} fa-2x"></i>
+                    </div>
 
-                <div class="d-flex flex-wrap gap-3">
-                    <span class="badge rounded-pill text-bg-danger fs-6">Статус: {{ status_meta.label }}</span>
-                    <span class="badge rounded-pill text-bg-primary fs-6">Скидка: {{ status_meta.discount }}%</span>
-                    <span class="badge rounded-pill text-bg-success fs-6">Кэшбек: {{ status_meta.cashback }}%</span>
+                    <div>
+                        <div class="display-5 fw-bold mb-1">{{ current_user.loyalty_points }} баллов</div>
+                        <div class="opacity-75">1 балл = 1 ₽ при оплате билета</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-end gap-3 flex-wrap">
+                        <div>
+                            <div class="small opacity-75">Владелец</div>
+                            <div class="fw-bold">{{ current_user.username }}</div>
+                            <div class="small opacity-75">{{ current_user.email }}</div>
+                        </div>
+                        <span class="badge rounded-pill text-bg-light text-dark px-3 py-2">{{ status_meta.label }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+                <div class="col-lg-7">
+            <div class="row g-3 h-100">
+                <div class="col-md-4">
+                    <div class="metric-card">
+                        <span class="metric-icon"><i class="fas fa-medal"></i></span>
+                        <div class="text-secondary small">Статус</div>
+                        <div class="fs-5 fw-bold">{{ status_meta.label }}</div>
+                        <div class="small text-secondary">{{ paid_bookings_total }} оплаченных билетов</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric-card">
+                        <span class="metric-icon"><i class="fas fa-percent"></i></span>
+                        <div class="text-secondary small">Скидка статуса</div>
+                        <div class="fs-5 fw-bold">{{ status_meta.discount }}%</div>
+                        <div class="small text-secondary">применяется при оплате</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric-card">
+                        <span class="metric-icon"><i class="fas fa-coins"></i></span>
+                        <div class="text-secondary small">Начисление</div>
+                        <div class="fs-5 fw-bold">{{ status_meta.cashback }}%</div>
+                        <div class="small text-secondary">баллами после покупки</div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="status-step">
+                        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                            <strong>Прогресс статуса</strong>
+                            {% if status_meta.next_label %}
+                                <span class="text-secondary small">До «{{ status_meta.next_label }}» осталось {{ tickets_to_next_status }} билет(а)</span>
+                            {% else %}
+                                <span class="text-warning small"><i class="fas fa-crown me-1"></i>Максимальный уровень открыт</span>
+                            {% endif %}
+                        </div>
+                        <div class="progress" style="height: 12px; background: rgba(255,255,255,0.08);">
+                            <div class="progress-bar bg-warning" style="width: {{ status_progress }}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2 small text-secondary">
+                            <span>Гость · 0</span>
+                            <span>Новичок · 5</span>
+                            <span>Любитель · 10</span>
+                            <span>Легенда · 20</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="alert alert-success mb-0">
+                        <i class="fas fa-circle-info me-2"></i>
+                        При оплате можно копить баллы или списать доступные баллы с карты лояльности.
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
 </div>
 
 <div class="row g-4 mb-4">
     <div class="col-lg-6">
-        <div class="card h-100" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(229, 9, 20, 0.2);">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="card-title mb-0">Последние купленные билеты</h4>
-                    <a href="{{ url_for('main.profile_history') }}" class="btn btn-sm btn-outline-cinema">Полная история</a>
-                </div>
-                {% if paid_bookings %}
-                    {% for booking in paid_bookings %}
-                    <div class="border rounded p-3 mb-3" style="border-color: rgba(255,255,255,0.15) !important;">
-                        <div><strong>Билет:</strong> {{ booking.ticket_code }}</div>
-                        <div><strong>Фильм:</strong> {{ booking.screening.movie.title }}</div>
-                        <div><strong>Сеанс:</strong> {{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</div>
-                        <img src="{{ ticket_qr_url(booking) }}" alt="QR {{ booking.ticket_code }}" width="120" height="120" class="my-2 border rounded">
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <p class="mb-0 text-secondary">Оплаченных билетов пока нет.</p>
-                {% endif %}
+        <div class="history-card h-100 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
+                <h4 class="mb-0"><i class="fas fa-qrcode me-2 text-warning"></i>Последние купленные билеты</h4>
+                <a href="{{ url_for('main.profile_history') }}" class="btn btn-sm btn-outline-cinema">Полная история</a>
             </div>
+            {% if paid_bookings %}
+                {% for booking in paid_bookings %}
+                    <div class="ticket-mini mb-3">
+                        <div class="d-flex justify-content-between gap-3 flex-wrap">
+                            <div>
+                                <div class="text-secondary small">{{ booking.ticket_code }}</div>
+                                <h5 class="mb-1">{{ booking.screening.movie.title }}</h5>
+                                <div class="small text-secondary">{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }} · {{ booking.screening.hall_name }}</div>
+                                <div class="small text-secondary">Ряд {{ booking.seat_row }}, место {{ booking.seat_col }}</div>
+                            </div>
+                            <img src="{{ ticket_qr_url(booking) }}" alt="QR {{ booking.ticket_code }}" width="104" height="104" class="border rounded bg-white p-1">
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="mb-0 text-secondary">Оплаченных билетов пока нет. После первой покупки здесь появится билет и QR-код.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="feedback-card h-100 p-4">
+            <div class="mb-3">
+                <p class="text-uppercase text-secondary fw-bold mb-1">Обратная связь</p>
+                <h4 class="mb-1">Напишите нам</h4>
+                <p class="text-secondary mb-0">Поможем с картой лояльности, билетами, списанием баллов или любым вопросом по кинотеатру.</p>
+            </div>
+            <form method="POST" action="{{ url_for('main.send_feedback') }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Тип обращения</label>
+                        <select name="topic" class="form-select">
+                            <option value="question">Вопрос</option>
+                            <option value="loyalty">Карта лояльности</option>
+                            <option value="suggestion">Предложение</option>
+                            <option value="complaint">Проблема</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Как ответить</label>
+                        <select name="preferred_contact" class="form-select">
+                            <option value="email">Email</option>
+                            <option value="messenger">Мессенджер</option>
+                            <option value="phone">Телефон</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Тема</label>
+                        <input type="text" name="subject" class="form-control" maxlength="200" placeholder="Например: не списались баллы" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Сообщение</label>
+                        <textarea name="message" class="form-control" rows="4" placeholder="Опишите ситуацию — мы передадим обращение администратору." required></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-cinema w-100"><i class="fas fa-paper-plane me-2"></i>Отправить обращение</button>
+                    </div>
+                </div>
+            </form>
+
+            {% if feedback_requests %}
+                <hr class="border-secondary my-4">
+                <h6 class="mb-3">Последние обращения</h6>
+                {% for item in feedback_requests %}
+                    <div class="d-flex justify-content-between gap-3 small mb-2">
+                        <span>{{ item.subject }}</span>
+                        <span class="badge text-bg-secondary">{{ item.status }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
         </div>
     </div>
 </div>
-<div class="card" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(229, 9, 20, 0.2);">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="card-title mb-0">Последние бронирования и сеансы</h4>
-            <a href="{{ url_for('main.profile_history') }}" class="btn btn-sm btn-outline-cinema">Открыть историю</a>
-        </div>
-        {% if bookings %}
-                    <div class="table-responsive"><table class="table table-dark table-striped align-middle"><tbody>
-            {% for booking in bookings %}
-            <tr><td>{{ booking.screening.movie.title }}</td><td>{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</td><td>{{ booking.status }}</td></tr>
-            {% endfor %}
-        </tbody></table></div>
-        {% if bookings_total > 5 %}<p class="text-secondary mb-0">Показаны 5 из {{ bookings_total }} бронирований.</p>{% endif %}
-        {% else %}<p class="mb-0 text-secondary">Бронирований пока нет.</p>{% endif %}
+<div class="history-card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
+        <h4 class="mb-0"><i class="fas fa-clock-rotate-left me-2 text-warning"></i>Последние бронирования и сеансы</h4>
+        <a href="{{ url_for('main.profile_history') }}" class="btn btn-sm btn-outline-cinema">Открыть историю</a>
     </div>
+    {% if bookings %}
+        <div class="table-responsive">
+            <table class="table table-dark table-striped align-middle">
+                <tbody>
+                    {% for booking in bookings %}
+                        <tr>
+                            <td>{{ booking.screening.movie.title }}</td>
+                            <td>{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>Ряд {{ booking.seat_row }}, место {{ booking.seat_col }}</td>
+                            <td><span class="badge text-bg-secondary">{{ booking.status }}</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if bookings_total > 5 %}<p class="text-secondary mb-0">Показаны 5 из {{ bookings_total }} бронирований.</p>{% endif %}
+        {% else %}
+        <p class="mb-0 text-secondary">Бронирований пока нет.</p>
+    {% endif %}
 </div>
 
 {% endblock %}

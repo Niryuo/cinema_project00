@@ -29,25 +29,63 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def total_active_bookings(self):
+        if self.id:
+            return Booking.query.filter_by(user_id=self.id, status="paid").count()
         return sum(1 for booking in self.bookings if booking.status == "paid")
 
     def update_loyalty_status(self):
-        active_bookings = self.total_active_bookings()
-        if active_bookings >= 20:
+        paid_tickets = self.total_active_bookings()
+        if paid_tickets >= 20:
             self.loyalty_status = "legend"
-        elif active_bookings >= 10:
+        elif paid_tickets >= 10:
             self.loyalty_status = "fan"
-        elif active_bookings >= 5:
+        elif paid_tickets >= 5:
             self.loyalty_status = "newbie"
         else:
             self.loyalty_status = "guest"
 
     def status_meta(self):
         mapping = {
-            "guest": {"label": "Гость", "discount": 0, "cashback": 0},
-            "newbie": {"label": "Новичок", "discount": 3, "cashback": 2},
-            "fan": {"label": "Любитель кино", "discount": 5, "cashback": 3},
-            "legend": {"label": "Кино-легенда", "discount": 10, "cashback": 5},
+            "guest": {
+                "label": "Гость",
+                "discount": 0,
+                "cashback": 5,
+                "icon": "fa-ticket",
+                "min_tickets": 0,
+                "next_label": "Новичок",
+                "next_tickets": 5,
+                "gradient": "linear-gradient(135deg, #3a3a3a 0%, #151515 100%)",
+            },
+            "newbie": {
+                "label": "Новичок",
+                "discount": 3,
+                "cashback": 7,
+                "icon": "fa-star",
+                "min_tickets": 5,
+                "next_label": "Любитель кино",
+                "next_tickets": 10,
+                "gradient": "linear-gradient(135deg, #243b55 0%, #141e30 100%)",
+            },
+            "fan": {
+                "label": "Любитель кино",
+                "discount": 5,
+                "cashback": 10,
+                "icon": "fa-clapperboard",
+                "min_tickets": 10,
+                "next_label": "Кино-легенда",
+                "next_tickets": 20,
+                "gradient": "linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%)",
+            },
+            "legend": {
+                "label": "Кино-легенда",
+                "discount": 10,
+                "cashback": 15,
+                "icon": "fa-crown",
+                "min_tickets": 20,
+                "next_label": None,
+                "next_tickets": None,
+                "gradient": "linear-gradient(135deg, #f7971e 0%, #ffd200 100%)",
+            },
         }
         return mapping.get(self.loyalty_status, mapping["guest"])
 
@@ -140,7 +178,7 @@ class FeedbackRequest(db.Model):
     admin_comment = db.Column(db.Text)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
-    user = db.relationship("User")
+    user = db.relationship("User", back_populates="feedback_requests")
 
 
 class RefundLog(db.Model):

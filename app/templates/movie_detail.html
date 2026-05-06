@@ -10,7 +10,25 @@
     .seat-taken { background: #6c757d; color: #fff; cursor: not-allowed; }
     .seat-mine { background: #0d6efd; color: #fff; }
     .screen { background: rgba(255,255,255,0.1); border-radius: 10px; text-align: center; padding: 0.7rem; margin-bottom: 1rem; }
-
+        .payment-panel {
+        background: linear-gradient(135deg, rgba(229, 9, 20, 0.14), rgba(255, 215, 0, 0.08));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        padding: 1rem;
+    }
+    .payment-panel .form-select {
+        background-color: rgba(20, 20, 20, 0.88);
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.16);
+        border-radius: 14px;
+    }
+    .loyalty-payment-badge {
+        background: rgba(255, 215, 0, 0.14);
+        border: 1px solid rgba(255, 215, 0, 0.28);
+        color: #ffe58a;
+        border-radius: 999px;
+        padding: 0.35rem 0.75rem;
+    }
 </style>
 {% endblock %}
 
@@ -107,22 +125,50 @@
                             <button type="submit" class="btn btn-cinema">Подтвердить место</button>
                         </form>
                     {% elif booking.status == 'confirmed' %}
-                        <form method="POST" action="{{ url_for('main.pay_booking', booking_id=booking.id) }}" class="mb-2">
+                                               {% set payment_status = current_user.status_meta() %}
+                        {% set discount_amount = booking.screening.ticket_price * payment_status.discount / 100 %}
+                        {% set discounted_price = booking.screening.ticket_price - discount_amount %}
+                        {% set max_points_to_use = [current_user.loyalty_points, discounted_price|int]|min %}
+                        {% set price_with_points = discounted_price - max_points_to_use %}
+                        <form method="POST" action="{{ url_for('main.pay_booking', booking_id=booking.id) }}" class="payment-panel mb-2">
+                            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                                <div>
+                                    <h5 class="mb-1"><i class="fas fa-credit-card me-2 text-warning"></i>Оплата билета</h5>
+                                    <div class="text-secondary small">Карта {{ current_user.loyalty_card_number }} · статус {{ payment_status.label }}</div>
+                                </div>
+                                <span class="loyalty-payment-badge">{{ current_user.loyalty_points }} баллов</span>
+                            </div>
+
+                            <div class="row g-2 mb-3 small">
+                                <div class="col-sm-4">
+                                    <div class="text-secondary">Цена</div>
+                                    <strong>{{ '%.2f'|format(booking.screening.ticket_price) }} ₽</strong>
+                                </div>
+                                <div class="col-sm-4">
+                                    <div class="text-secondary">Скидка статуса</div>
+                                    <strong>{{ payment_status.discount }}% (−{{ '%.2f'|format(discount_amount) }} ₽)</strong>
+                                </div>
+                                <div class="col-sm-4">
+                                    <div class="text-secondary">Начислится</div>
+                                    <strong>{{ payment_status.cashback }}% баллами</strong>
+                                </div>
+                            </div>
+
                             <div class="mb-2">
                                 <label class="form-label">Баллы лояльности</label>
                                 <select name="payment_mode" class="form-select">
-                                    <option value="save">Копить баллы</option>
-                                    <option value="use">Списать баллы (если есть)</option>
+                                    <option value="save">Копить баллы · к оплате {{ '%.2f'|format(discounted_price) }} ₽</option>
+                                    <option value="use">Списать до {{ max_points_to_use }} баллов · к оплате {{ '%.2f'|format(price_with_points) }} ₽</option>
                                 </select>
                             </div>
-                            <div class="mb-2">
+                            <div class="mb-3">
                                 <label class="form-label">Проверка оплаты (демо)</label>
                                 <select name="simulate_payment" class="form-select">
                                     <option value="ok">Оплата проходит</option>
                                     <option value="fail">Оплата не проходит (нет денег)</option>
                                 </select>
                             </div>
-                            <button type="submit" class="btn btn-cinema">Оплатить {{ '%.2f'|format(booking.screening.ticket_price) }} ₽</button>
+                            <button type="submit" class="btn btn-cinema">Оплатить билет</button>
                         </form>
                     {% elif booking.status == 'paid' %}
                         <p class="mb-2 text-success"><strong>Билет:</strong> {{ booking.ticket_code }}</p>

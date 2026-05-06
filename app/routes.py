@@ -60,6 +60,27 @@ def _ensure_loyalty_card(user):
             break
 
 
+def _loyalty_payment_quote(user, ticket_price, payment_mode="save"):
+    user.update_loyalty_status()
+    status_meta = user.status_meta()
+    discount_amount = round(ticket_price * status_meta["discount"] / 100, 2)
+    discounted_price = max(ticket_price - discount_amount, 0)
+    points_to_use = 0
+    if payment_mode == "use" and user.loyalty_points > 0:
+        points_to_use = min(user.loyalty_points, int(discounted_price))
+
+    final_price = round(discounted_price - points_to_use, 2)
+    earned_points = int(final_price * status_meta["cashback"] / 100)
+
+    return {
+        "status_meta": status_meta,
+        "discount_amount": discount_amount,
+        "discounted_price": discounted_price,
+        "points_to_use": points_to_use,
+        "final_price": final_price,
+        "earned_points": earned_points,
+    }
+
 def _generate_ticket_code():
     while True:
         code = f"CP-TKT-{secrets.token_hex(4).upper()}"
@@ -127,6 +148,9 @@ def movie_detail(id):
     screenings_data = []
     user_booking_ids = set()
     if current_user.is_authenticated:
+        _ensure_loyalty_card(current_user)
+        current_user.update_loyalty_status()
+        db.session.commit()
         user_booking_ids = {
             booking.id
             for booking in Booking.query.filter(
@@ -232,14 +256,41 @@ def profile():
     paid_bookings = [b for b in bookings if b.status == "paid"]
     latest_paid_bookings = paid_bookings[:5]
     latest_bookings = bookings[:5]
+    latest_feedback_requests = (
+        FeedbackRequest.query.filter_by(user_id=current_user.id)
+        .order_by(FeedbackRequest.created_at.desc())
+        .limit(3)
+        .all()
+    )
+    status_meta = current_user.status_meta()
+    paid_bookings_total = len(paid_bookings)
+    if status_meta["next_tickets"]:
+        status_progress = int(
+            min(
+                100,
+                max(
+                    0,
+                    (paid_bookings_total - status_meta["min_tickets"])
+                    / (status_meta["next_tickets"] - status_meta["min_tickets"])
+                    * 100,
+                ),
+            )
+        )
+        tickets_to_next_status = max(status_meta["next_tickets"] - paid_bookings_total, 0)
+    else:
+        status_progress = 100
+        tickets_to_next_status = 0
 
     return render_template(
         "profile.html",
         bookings=latest_bookings,
         paid_bookings=latest_paid_bookings,
-        paid_bookings_total=len(paid_bookings),
+        feedback_requests=latest_feedback_requests,
+        paid_bookings_total=paid_bookings_total,
         bookings_total=len(bookings),
-        status_meta=current_user.status_meta(),
+        status_meta=status_meta,
+        status_progress=status_progress,
+        tickets_to_next_status=tickets_to_next_status,
         ticket_qr_url=_ticket_qr_url,
     )
 
@@ -549,30 +600,35 @@ def pay_booking(booking_id):
         return redirect(url_for("main.movie_detail", id=booking.screening.movie_id))
 
     ticket_price = booking.screening.ticket_price
-    points_to_use = 0
-    if payment_mode == "use" and current_user.loyalty_points > 0:
-        points_to_use = min(current_user.loyalty_points, int(ticket_price))
+    _ensure_loyalty_card(current_user)
+    payment_quote = _loyalty_payment_quote(current_user, ticket_price, payment_mode)
 
     booking.status = "paid"
     booking.paid_at = datetime.utcnow()
-    booking.price_paid = ticket_price - points_to_use
+    booking.price_paid = payment_quote["final_price"]
     booking.ticket_code = _generate_ticket_code()
 
-    _ensure_loyalty_card(current_user)
-    if points_to_use:
-        current_user.loyalty_points -= points_to_use
-    else:
-        current_user.loyalty_points += int(booking.price_paid)
-    current_user.cashback_balance += booking.price_paid * 0.05
+    if payment_quote["points_to_use"]:
+        current_user.loyalty_points -= payment_quote["points_to_use"]
+    current_user.loyalty_points += payment_quote["earned_points"]
+    current_user.cashback_balance += payment_quote["earned_points"]
+    db.session.flush()
     current_user.update_loyalty_status()
 
     try:
         _send_ticket_email(booking)
         booking.emailed_at = datetime.utcnow()
-        flash("Оплата прошла успешно. Билет отправлен на email и сохранен в личном кабинете.", "success")
+        flash(
+            f"Оплата прошла успешно: списано {payment_quote['points_to_use']} баллов, "
+            f"начислено {payment_quote['earned_points']} баллов. Билет отправлен на email и сохранен в личном кабинете.",
+            "success",
+        )
     except Exception:
-        flash("Оплата прошла успешно. Билет сохранен в личном кабинете (email пока не отправлен).", "success")
-
+        flash(
+            f"Оплата прошла успешно: списано {payment_quote['points_to_use']} баллов, "
+            f"начислено {payment_quote['earned_points']} баллов. Билет сохранен в личном кабинете (email пока не отправлен).",
+            "success",
+        )
     db.session.commit()
     return redirect(url_for("main.profile"))
 
@@ -606,6 +662,10 @@ def send_feedback():
     if not subject or not message:
         flash("Укажите тему и текст обращения", "danger")
         return redirect(url_for("main.profile"))
+    if topic not in {"question", "complaint", "suggestion", "loyalty"}:
+        topic = "question"
+    if preferred_contact not in {"email", "phone", "messenger"}:
+        preferred_contact = "email"
 
     feedback = FeedbackRequest(
         user_id=current_user.id,
@@ -616,7 +676,7 @@ def send_feedback():
     )
     db.session.add(feedback)
     db.session.commit()
-    flash("Заявка отправлена администратору", "success")
+    flash("Спасибо за обратную связь! Мы получили обращение и скоро ответим удобным способом.", "success")
     return redirect(url_for("main.profile"))
 
 
