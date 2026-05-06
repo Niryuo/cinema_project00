@@ -34,6 +34,10 @@ class User(UserMixin, db.Model):
         return sum(1 for booking in self.bookings if booking.status == "paid")
 
     def update_loyalty_status(self):
+        if self.role == "admin":
+            self.loyalty_status = "admin"
+            return
+
         paid_tickets = self.total_active_bookings()
         if paid_tickets >= 20:
             self.loyalty_status = "legend"
@@ -46,6 +50,16 @@ class User(UserMixin, db.Model):
 
     def status_meta(self):
         mapping = {
+            "admin": {
+                "label": "Админ",
+                "discount": 0,
+                "cashback": 0,
+                "icon": "fa-user-shield",
+                "min_tickets": 0,
+                "next_label": None,
+                "next_tickets": None,
+                "gradient": "linear-gradient(135deg, #5f0f40 0%, #310e68 100%)",
+            },
             "guest": {
                 "label": "Гость",
                 "discount": 0,
@@ -87,6 +101,8 @@ class User(UserMixin, db.Model):
                 "gradient": "linear-gradient(135deg, #f7971e 0%, #ffd200 100%)",
             },
         }
+        if self.role == "admin":
+            return mapping["admin"]
         return mapping.get(self.loyalty_status, mapping["guest"])
 
 

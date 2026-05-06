@@ -134,8 +134,40 @@ def _send_ticket_email(booking):
 @main.route("/")
 def index():
     _release_expired_bookings(notify_user_id=current_user.id if current_user.is_authenticated else None)
-    movies = Movie.query.order_by(Movie.created_at.desc()).all()
-    return render_template("index.html", movies=movies)
+    search_query = request.args.get("q", "").strip()
+    search_message = None
+    screenings_by_movie = {}
+
+    if search_query:
+        movies = (
+            Movie.query.filter(Movie.title.ilike(f"%{search_query}%"))
+            .order_by(Movie.created_at.desc())
+            .all()
+        )
+        if movies:
+            movie_ids = [movie.id for movie in movies]
+            screenings = (
+                Screening.query.filter(Screening.movie_id.in_(movie_ids))
+                .order_by(Screening.start_time.asc())
+                .all()
+            )
+            for screening in screenings:
+                screenings_by_movie.setdefault(screening.movie_id, []).append(screening)
+
+            if not screenings:
+                search_message = f"Фильм «{search_query}» найден, но сеансов для него пока нет."
+        else:
+            search_message = f"Фильм или сеанс по запросу «{search_query}» не найден."
+    else:
+        movies = Movie.query.order_by(Movie.created_at.desc()).all()
+
+    return render_template(
+        "index.html",
+        movies=movies,
+        search_query=search_query,
+        search_message=search_message,
+        screenings_by_movie=screenings_by_movie,
+    )
 
 
 
@@ -654,6 +686,9 @@ def issue_receipt(booking_id):
 @main.route("/feedback", methods=["POST"])
 @login_required
 def send_feedback():
+    if current_user.role == "admin":
+        flash("Администратор не может отправлять обратную связь самому себе.", "danger")
+        return redirect(url_for("main.profile"))
     subject = request.form.get("subject", "").strip()
     message = request.form.get("message", "").strip()
     topic = request.form.get("topic", "question")

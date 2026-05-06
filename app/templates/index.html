@@ -152,6 +152,42 @@
         margin-bottom: 1rem;
     }
 
+    .search-panel {
+        background: rgba(31, 31, 31, 0.94);
+        border: 1px solid rgba(229, 9, 20, 0.2);
+        border-radius: 24px;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.32);
+        margin-bottom: 2.5rem;
+        padding: 1.5rem;
+    }
+
+    .search-panel .form-control {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 18px;
+        color: var(--text-primary);
+    }
+
+    .search-panel .form-control:focus {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--primary-color);
+        color: var(--text-primary);
+        box-shadow: 0 0 0 0.25rem rgba(229, 9, 20, 0.2);
+    }
+
+    .screening-list {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        margin-top: 1rem;
+        padding: 0.9rem;
+    }
+
+    .screening-list-item {
+        color: var(--text-secondary);
+        font-size: 0.92rem;
+    }
+
     @media (max-width: 768px) {
         .hero-section h1 {
             font-size: 2.5rem;
@@ -177,7 +213,39 @@
 </div>
 
 <!-- Movies Section -->
-<h2 class="section-title">Сейчас в кино</h2>
+<h2 class="section-title">{% if search_query %}Результаты поиска{% else %}Сейчас в кино{% endif %}</h2>
+
+<div class="search-panel">
+    <form method="GET" action="{{ url_for('main.index') }}" class="row g-3 align-items-end">
+        <div class="col-lg-9">
+            <label for="movie-search" class="form-label fw-bold">Найти сеанс по названию фильма</label>
+            <input
+                type="search"
+                id="movie-search"
+                name="q"
+                class="form-control form-control-lg"
+                value="{{ search_query }}"
+                placeholder="Введите название фильма или сеанса"
+                aria-label="Поиск сеанса по названию фильма"
+            >
+        </div>
+        <div class="col-lg-3 d-grid">
+            <button type="submit" class="btn btn-cinema btn-lg"><i class="fas fa-search me-2"></i>Найти</button>
+        </div>
+        {% if search_query %}
+            <div class="col-12 d-flex align-items-center gap-3 flex-wrap">
+                <span class="text-secondary">Показаны результаты по запросу «{{ search_query }}».</span>
+                <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-outline-cinema">Сбросить поиск</a>
+            </div>
+        {% endif %}
+    </form>
+</div>
+
+{% if search_message %}
+    <div class="alert alert-warning mb-4" role="alert">
+        <i class="fas fa-circle-info me-2"></i>{{ search_message }}
+    </div>
+{% endif %}
 
 {% if movies %}
 <div class="row g-4">
@@ -200,6 +268,24 @@
                     <i class="far fa-clock"></i>
                     {{ movie.duration }} мин
                 </div>
+                                {% if search_query %}
+                    {% set movie_screenings = screenings_by_movie.get(movie.id, []) %}
+                    {% if movie_screenings %}
+                        <div class="screening-list">
+                            <div class="fw-bold text-light mb-2"><i class="fas fa-calendar-days me-2 text-warning"></i>Доступные сеансы</div>
+                            {% for screening in movie_screenings[:3] %}
+                                <div class="screening-list-item">
+                                    {{ screening.start_time.strftime('%d.%m.%Y %H:%M') }} · {{ screening.hall_name }} · {{ '%.0f'|format(screening.ticket_price) }} ₽
+                                </div>
+                            {% endfor %}
+                            {% if movie_screenings|length > 3 %}
+                                <div class="small text-secondary mt-1">Еще {{ movie_screenings|length - 3 }} сеанс(а) на странице фильма</div>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning mt-3 mb-0 py-2 small">Сеансов для этого фильма пока нет.</div>
+                    {% endif %}
+                {% endif %}
             </div>
 
         </a>
@@ -210,8 +296,13 @@
 {% else %}
 <div class="no-movies">
     <i class="fas fa-film"></i>
-    <h3>Фильмы скоро появятся</h3>
-    <p>Следите за обновлениями. Мы добавляем новые фильмы каждый день!</p>
+    {% if search_query %}
+        <h3>Ничего не найдено</h3>
+        <p>Проверьте название фильма или попробуйте другой запрос.</p>
+    {% else %}
+        <h3>Фильмы скоро появятся</h3>
+        <p>Следите за обновлениями. Мы добавляем новые фильмы каждый день!</p>
+    {% endif %}
 </div>
 {% endif %}
 

@@ -252,38 +252,43 @@
                 <h4 class="mb-1">Напишите нам</h4>
                 <p class="text-secondary mb-0">Поможем с картой лояльности, билетами, списанием баллов или любым вопросом по кинотеатру.</p>
             </div>
-            <form method="POST" action="{{ url_for('main.send_feedback') }}">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Тип обращения</label>
-                        <select name="topic" class="form-select">
-                            <option value="question">Вопрос</option>
-                            <option value="loyalty">Карта лояльности</option>
-                            <option value="suggestion">Предложение</option>
-                            <option value="complaint">Проблема</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Как ответить</label>
-                        <select name="preferred_contact" class="form-select">
-                            <option value="email">Email</option>
-                            <option value="messenger">Мессенджер</option>
-                            <option value="phone">Телефон</option>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Тема</label>
-                        <input type="text" name="subject" class="form-control" maxlength="200" placeholder="Например: не списались баллы" required>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Сообщение</label>
-                        <textarea name="message" class="form-control" rows="4" placeholder="Опишите ситуацию — мы передадим обращение администратору." required></textarea>
-                    </div>
-                    <div class="col-12">
-                        <button type="submit" class="btn btn-cinema w-100"><i class="fas fa-paper-plane me-2"></i>Отправить обращение</button>
-                    </div>
+                        {% if current_user.role == 'admin' %}
+                <div class="alert alert-warning mb-0">
+                    <i class="fas fa-user-shield me-2"></i>Администратор не может отправлять обратную связь самому себе. Обращения клиентов доступны в админ-панели.
                 </div>
-            </form>
+             {% else %}
+                <form method="POST" action="{{ url_for('main.send_feedback') }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Тип обращения</label>
+                            <select name="topic" class="form-select">
+                                <option value="question">Вопрос</option>
+                                <option value="loyalty">Карта лояльности</option>
+                                <option value="suggestion">Предложение</option>
+                                <option value="complaint">Проблема</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Как ответить</label>
+                            <select name="preferred_contact" class="form-select">
+                                <option value="email">Email</option>
+                                <option value="messenger">Мессенджер</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Тема</label>
+                            <input type="text" name="subject" class="form-control" maxlength="200" placeholder="Например: не списались баллы" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Сообщение</label>
+                            <textarea name="message" class="form-control" rows="4" placeholder="Опишите ситуацию — мы передадим обращение администратору." required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-cinema w-100"><i class="fas fa-paper-plane me-2"></i>Отправить обращение</button>
+                        </div>
+                    </div>
+                </form>
+            {% endif %}
 
             {% if feedback_requests %}
                 <hr class="border-secondary my-4">
