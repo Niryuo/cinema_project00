@@ -77,7 +77,9 @@ def _save_upload(file_storage):
     file_storage.save(filepath)
     return f"uploads/{filename}"
 
-
+def _ticket_qr_url(booking):
+    payload = f"ticket:{booking.ticket_code or booking.id}:user:{booking.user_id}:screening:{booking.screening_id}:seat:{booking.seat_row}-{booking.seat_col}"
+    return f"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={payload}"
 def _send_ticket_email(booking):
     sender = os.getenv("MAIL_SENDER", "no-reply@cinema-project.local")
     smtp_host = os.getenv("SMTP_HOST")
@@ -227,21 +229,38 @@ def profile():
         .all()
     )
 
-    movie_history = (
-        Movie.query.join(Screening).join(Booking)
+    paid_bookings = [b for b in bookings if b.status == "paid"]
+    latest_paid_bookings = paid_bookings[:5]
+    latest_bookings = bookings[:5]
+
+    return render_template(
+        "profile.html",
+        bookings=latest_bookings,
+        paid_bookings=latest_paid_bookings,
+        paid_bookings_total=len(paid_bookings),
+        bookings_total=len(bookings),
+        status_meta=current_user.status_meta(),
+        ticket_qr_url=_ticket_qr_url,
+    )
+
+
+@main.route("/profile/history")
+@login_required
+def profile_history():
+    _release_expired_bookings(notify_user_id=current_user.id)
+    bookings = (
+        Booking.query.join(Screening).join(Movie)
         .filter(Booking.user_id == current_user.id)
-        .distinct()
-        .order_by(Movie.title.asc())
+        .order_by(Booking.created_at.desc())
         .all()
     )
     paid_bookings = [b for b in bookings if b.status == "paid"]
 
     return render_template(
-        "profile.html",
+        "profile_history.html",
         bookings=bookings,
         paid_bookings=paid_bookings,
-        movie_history=movie_history,
-        status_meta=current_user.status_meta(),
+        ticket_qr_url=_ticket_qr_url,
     )
 
 
@@ -261,7 +280,7 @@ def admin_panel():
     latest_bookings = (
         Booking.query.join(Booking.user).join(Screening).join(Movie)
         .order_by(Booking.created_at.desc())
-        .limit(200)
+        .limit(30)
         .all()
     )
     feedback_requests = FeedbackRequest.query.order_by(FeedbackRequest.created_at.desc()).limit(200).all()
@@ -283,6 +302,18 @@ def admin_panel():
 
     return render_template("admin/dashboard.html", movies=movies, latest_bookings=latest_bookings, feedback_requests=feedback_requests, total_revenue=total_revenue, total_tickets=total_tickets, popular_movies=popular_movies, popular_weekdays=popular_weekdays)
 
+@main.route("/admin/bookings/history")
+@login_required
+def admin_bookings_history():
+    if not _admin_required():
+        return "Доступ запрещён", 403
+
+    all_bookings = (
+        Booking.query.join(Booking.user).join(Screening).join(Movie)
+        .order_by(Booking.created_at.desc())
+        .all()
+    )
+    return render_template("admin/bookings_history.html", bookings=all_bookings)
 
 @main.route("/add_movie", methods=["GET", "POST"])
 @login_required

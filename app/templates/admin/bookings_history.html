@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Полная история бронирований и билетов</h2>
+<div class="table-responsive"><table class="table table-dark table-striped align-middle">
+<thead><tr><th>Клиент</th><th>Фильм/сеанс</th><th>Место</th><th>Статус</th><th>Билет</th></tr></thead>
+<tbody>
+{% for booking in bookings %}
+<tr><td>{{ booking.user.username }}</td><td>{{ booking.screening.movie.title }} {{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</td><td>{{ booking.seat_row }}-{{ booking.seat_col }}</td><td>{{ booking.status }}</td><td>{{ booking.ticket_code or '—' }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endblock %}

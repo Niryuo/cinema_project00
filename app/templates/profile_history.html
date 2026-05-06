@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}История - Cinema Project{% endblock %}
+{% block content %}
+<h2>Полная история бронирований и билетов</h2>
+<div class="table-responsive"><table class="table table-dark table-striped align-middle">
+<thead><tr><th>Фильм</th><th>Сеанс</th><th>Место</th><th>Статус</th><th>Билет</th><th>QR</th></tr></thead>
+<tbody>
+{% for booking in bookings %}
+<tr>
+<td>{{ booking.screening.movie.title }}</td><td>{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</td><td>{{ booking.seat_row }}-{{ booking.seat_col }}</td><td>{{ booking.status }}</td><td>{{ booking.ticket_code or '—' }}</td>
+<td>{% if booking.ticket_code %}<img src="{{ ticket_qr_url(booking) }}" width="90" height="90">{% else %}—{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody></table></div>
+{% endblock %}

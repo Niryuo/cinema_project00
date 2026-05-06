@@ -1,33 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Личный кабинет - Cinema Project
-<div class="card mt-4" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(229, 9, 20, 0.2);">
-    <div class="card-body">
-        <h4 class="card-title mb-3">Обратная связь</h4>
-        <p class="text-secondary">Вы можете написать по вопросу или по билету. Админ свяжется с вами по email или лично в кинотеатре.</p>
-        <form method="POST" action="{{ url_for('main.send_feedback') }}">
-            <div class="row g-2">
-                <div class="col-md-3">
-                    <select class="form-select" name="topic">
-                        <option value="question">Вопрос</option>
-                        <option value="ticket">Проблема с билетом</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select class="form-select" name="preferred_contact">
-                        <option value="email">Связь по почте</option>
-                        <option value="in_person">Лично у администратора</option>
-                    </select>
-                </div>
-                <div class="col-md-6"><input class="form-control" name="subject" placeholder="Тема" required></div>
-            </div>
-            <textarea class="form-control mt-2" name="message" rows="4" placeholder="Опишите вопрос или проблему" required></textarea>
-            <button type="submit" class="btn btn-cinema mt-2">Отправить заявку</button>
-        </form>
-    </div>
-</div>
-
-{% endblock %}
+{% block title %}Личный кабинет - Cinema Project{% endblock %}
 
 {% block content %}
 <h2 class="mb-4">Личный кабинет</h2>
@@ -49,33 +22,23 @@
         </div>
     </div>
 
-    <div class="col-lg-4">
-        <div class="card h-100" style="background: linear-gradient(135deg, #1f1f1f 0%, #2b1b1b 100%); color: var(--text-primary); border: 1px solid rgba(255, 215, 0, 0.3);">
-            <div class="card-body">
-                <h5 class="card-title mb-3"><i class="fas fa-id-card me-2"></i>Личная карта</h5>
-                <p class="mb-2"><strong>Номер:</strong> {{ current_user.loyalty_card_number }}</p>
-                <p class="mb-2"><strong>Баллы:</strong> {{ current_user.loyalty_points }}</p>
-                               <p class="mb-2"><strong>Кэшбек:</strong> {{ '%.2f'|format(current_user.cashback_balance) }} ₽</p>
-                <p class="mb-0"><strong>Просмотрено сеансов:</strong> {{ paid_bookings|length }}</p>
-            </div>
-        </div>
-    </div>
 </div>
 
 <div class="row g-4 mb-4">
     <div class="col-lg-6">
         <div class="card h-100" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(229, 9, 20, 0.2);">
             <div class="card-body">
-                 <h4 class="card-title mb-3">Мои билеты</h4>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="card-title mb-0">Последние купленные билеты</h4>
+                    <a href="{{ url_for('main.profile_history') }}" class="btn btn-sm btn-outline-cinema">Полная история</a>
+                </div>
                 {% if paid_bookings %}
                     {% for booking in paid_bookings %}
                     <div class="border rounded p-3 mb-3" style="border-color: rgba(255,255,255,0.15) !important;">
                         <div><strong>Билет:</strong> {{ booking.ticket_code }}</div>
                         <div><strong>Фильм:</strong> {{ booking.screening.movie.title }}</div>
                         <div><strong>Сеанс:</strong> {{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</div>
-                        <div><strong>Место:</strong> Ряд {{ booking.seat_row }}, Место {{ booking.seat_col }}</div>
-                        <div><strong>Оплачено:</strong> {{ '%.2f'|format(booking.price_paid or 0) }} ₽</div>
-                        <div><strong>Email отправлен:</strong> {{ booking.emailed_at.strftime('%d.%m.%Y %H:%M') if booking.emailed_at else 'нет' }}</div>
+                        <img src="{{ ticket_qr_url(booking) }}" alt="QR {{ booking.ticket_code }}" width="120" height="120" class="my-2 border rounded">
                     </div>
                     {% endfor %}
                 {% else %}
@@ -87,66 +50,18 @@
 </div>
 <div class="card" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(229, 9, 20, 0.2);">
     <div class="card-body">
-        <h4 class="card-title mb-3">История бронирований и сеансов</h4>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="card-title mb-0">Последние бронирования и сеансы</h4>
+            <a href="{{ url_for('main.profile_history') }}" class="btn btn-sm btn-outline-cinema">Открыть историю</a>
+        </div>
         {% if bookings %}
-            <div class="table-responsive">
-                <table class="table table-dark table-striped align-middle">
-                    <thead>
-                        <tr>
-                            <th>Фильм</th>
-                            <th>Сеанс</th>
-                            <th>Место</th>
-                            <th>Статус</th>
-                            <th>Билет</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for booking in bookings %}
-                        <tr>
-                            <td>{{ booking.screening.movie.title }}</td>
-                            <td>{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</td>
-                            <td>{{ booking.seat_row }}-{{ booking.seat_col }}</td>
-                            <td>
-                                {% if booking.status == 'paid' %}<span class="badge text-bg-success">Оплачено</span>{% endif %}
-                                {% if booking.status == 'confirmed' %}<span class="badge text-bg-primary">Подтверждено</span>{% endif %}
-                                {% if booking.status == 'reserved' %}<span class="badge text-bg-secondary">Забронировано</span>{% endif %}
-                                {% if booking.status == 'cancelled' %}<span class="badge text-bg-danger">Отменено</span>{% endif %}
-                            </td>
-                            <td>{{ booking.ticket_code or '—' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <p class="mb-0 text-secondary">Бронирований пока нет.</p>
-        {% endif %}
-    </div>
-</div>
-
-<div class="card mt-4" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(229, 9, 20, 0.2);">
-    <div class="card-body">
-        <h4 class="card-title mb-3">Обратная связь</h4>
-        <p class="text-secondary">Вы можете написать по вопросу или по билету. Админ свяжется с вами по email или лично в кинотеатре.</p>
-        <form method="POST" action="{{ url_for('main.send_feedback') }}">
-            <div class="row g-2">
-                <div class="col-md-3">
-                    <select class="form-select" name="topic">
-                        <option value="question">Вопрос</option>
-                        <option value="ticket">Проблема с билетом</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select class="form-select" name="preferred_contact">
-                        <option value="email">Связь по почте</option>
-                        <option value="in_person">Лично у администратора</option>
-                    </select>
-                </div>
-                <div class="col-md-6"><input class="form-control" name="subject" placeholder="Тема" required></div>
-            </div>
-            <textarea class="form-control mt-2" name="message" rows="4" placeholder="Опишите вопрос или проблему" required></textarea>
-            <button type="submit" class="btn btn-cinema mt-2">Отправить заявку</button>
-        </form>
+                    <div class="table-responsive"><table class="table table-dark table-striped align-middle"><tbody>
+            {% for booking in bookings %}
+            <tr><td>{{ booking.screening.movie.title }}</td><td>{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</td><td>{{ booking.status }}</td></tr>
+            {% endfor %}
+        </tbody></table></div>
+        {% if bookings_total > 5 %}<p class="text-secondary mb-0">Показаны 5 из {{ bookings_total }} бронирований.</p>{% endif %}
+        {% else %}<p class="mb-0 text-secondary">Бронирований пока нет.</p>{% endif %}
     </div>
 </div>
 
