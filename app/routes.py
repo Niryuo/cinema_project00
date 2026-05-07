@@ -101,10 +101,25 @@ def _save_upload(file_storage):
 def _ticket_qr_url(booking):
     payload = f"ticket:{booking.ticket_code or booking.id}:user:{booking.user_id}:screening:{booking.screening_id}:seat:{booking.seat_row}-{booking.seat_col}"
     return f"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={payload}"
-def _send_ticket_email(booking):
+def _send_email(to_email, subject, body):
     sender = os.getenv("MAIL_SENDER", "no-reply@cinema-project.local")
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = int(os.getenv("SMTP_PORT", "25"))
+
+    if smtp_host:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = sender
+        msg["To"] = to_email
+        msg.set_content(body)
+
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as smtp:
+            smtp.send_message(msg)
+
+    return True
+
+
+def _send_ticket_email(booking):
 
     subject = f"Ваш билет #{booking.ticket_code}"
     body = (
@@ -117,19 +132,20 @@ def _send_ticket_email(booking):
         f"Стоимость: {booking.price_paid:.2f} ₽\n"
         f"Код билета: {booking.ticket_code}\n"
     )
+    return _send_email(booking.user.email, subject, body)
 
-    if smtp_host:
-        msg = EmailMessage()
-        msg["Subject"] = subject
-        msg["From"] = sender
-        msg["To"] = booking.user.email
-        msg.set_content(body)
-
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as smtp:
-            smtp.send_message(msg)
-
-    return True
-
+def _send_feedback_response_email(feedback):
+        subject = f"Ответ на обращение: {feedback.subject}"
+        body = (
+            f"Здравствуйте, {feedback.user.username}!\n\n"
+            f"Мы ответили на ваше обращение от "
+            f"{feedback.created_at.strftime('%d.%m.%Y %H:%M') if feedback.created_at else '—'}.\n\n"
+            f"Тема: {feedback.subject}\n\n"
+            f"Ваше сообщение:\n{feedback.message}\n\n"
+            f"Ответ администратора:\n{feedback.admin_comment}\n\n"
+            f"Статус обращения: {feedback.status_label()}.\n"
+        )
+        return _send_email(feedback.user.email, subject, body)
 
 @main.route("/")
 def index():
@@ -366,7 +382,18 @@ def admin_panel():
         .limit(30)
         .all()
     )
-    feedback_requests = FeedbackRequest.query.order_by(FeedbackRequest.created_at.desc()).limit(200).all()
+    active_feedback_requests = (
+        FeedbackRequest.query.filter(FeedbackRequest.status != "closed")
+        .order_by(FeedbackRequest.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    closed_feedback_requests = (
+        FeedbackRequest.query.filter_by(status="closed")
+        .order_by(FeedbackRequest.responded_at.desc(), FeedbackRequest.created_at.desc())
+        .limit(100)
+        .all()
+    )
     paid_bookings = [b for b in latest_bookings if b.status == "paid"]
     total_revenue = sum((b.price_paid or 0) for b in paid_bookings)
     total_tickets = len(paid_bookings)
@@ -383,7 +410,17 @@ def admin_panel():
     popular_movies = sorted(movie_stats.items(), key=lambda x: x[1], reverse=True)[:5]
     popular_weekdays = sorted(weekday_stats.items(), key=lambda x: x[1], reverse=True)
 
-    return render_template("admin/dashboard.html", movies=movies, latest_bookings=latest_bookings, feedback_requests=feedback_requests, total_revenue=total_revenue, total_tickets=total_tickets, popular_movies=popular_movies, popular_weekdays=popular_weekdays)
+    return render_template(
+        "admin/dashboard.html",
+        movies=movies,
+        latest_bookings=latest_bookings,
+        active_feedback_requests=active_feedback_requests,
+        closed_feedback_requests=closed_feedback_requests,
+        total_revenue=total_revenue,
+        total_tickets=total_tickets,
+        popular_movies=popular_movies,
+        popular_weekdays=popular_weekdays,
+    )
 
 @main.route("/admin/bookings/history")
 @login_required
@@ -726,12 +763,40 @@ def send_feedback():
         preferred_contact=preferred_contact,
         subject=subject,
         message=message,
+        status="sent",
     )
     db.session.add(feedback)
     db.session.commit()
     flash("Спасибо за обратную связь! Мы получили обращение и скоро ответим удобным способом.", "success")
     return redirect(url_for("main.profile"))
 
+
+@main.route("/admin/feedback/<int:feedback_id>/reply", methods=["POST"])
+@login_required
+def admin_reply_feedback(feedback_id):
+    if not _admin_required():
+        return "Доступ запрещён", 403
+
+    feedback = FeedbackRequest.query.get_or_404(feedback_id)
+    admin_comment = request.form.get("admin_comment", "").strip()
+
+    if not admin_comment:
+        flash("Введите ответ клиенту", "danger")
+        return redirect(url_for("main.admin_panel"))
+
+    feedback.admin_comment = admin_comment
+    feedback.status = "closed"
+    feedback.responded_at = datetime.utcnow()
+
+    try:
+        _send_feedback_response_email(feedback)
+        feedback.response_emailed_at = datetime.utcnow()
+        flash("Ответ отправлен клиенту на email, заявка закрыта.", "success")
+    except Exception:
+        flash("Заявка закрыта, но письмо клиенту пока не отправилось.", "warning")
+
+    db.session.commit()
+    return redirect(url_for("main.admin_panel"))
 
 @main.route("/admin/bookings/<int:booking_id>/refund", methods=["POST"])
 @login_required

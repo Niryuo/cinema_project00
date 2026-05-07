@@ -294,9 +294,22 @@
                 <hr class="border-secondary my-4">
                 <h6 class="mb-3">Последние обращения</h6>
                 {% for item in feedback_requests %}
-                    <div class="d-flex justify-content-between gap-3 small mb-2">
-                        <span>{{ item.subject }}</span>
-                        <span class="badge text-bg-secondary">{{ item.status }}</span>
+                                <div class="border border-secondary rounded-3 p-2 small mb-2">
+                        <div class="d-flex justify-content-between gap-3 align-items-start">
+                            <span class="fw-semibold">{{ item.subject }}</span>
+                            <span class="badge {{ item.status_badge_class() }}">{{ item.status_label() }}</span>
+                        </div>
+                        <div class="text-secondary mt-1">
+                            Отправлено: {{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else '—' }}
+                        </div>
+                        {% if item.is_closed() %}
+                            <div class="text-success mt-1">
+                                Закрыто: {{ item.responded_at.strftime('%d.%m.%Y %H:%M') if item.responded_at else '—' }}
+                            </div>
+                            {% if item.admin_comment %}
+                                <div class="mt-2"><strong>Ответ администратора:</strong> {{ item.admin_comment }}</div>
+                            {% endif %}
+                        {% endif %}
                     </div>
                 {% endfor %}
             {% endif %}

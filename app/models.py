@@ -196,13 +196,34 @@ class FeedbackRequest(db.Model):
     preferred_contact = db.Column(db.String(20), nullable=False, default="email")
     subject = db.Column(db.String(200), nullable=False)
     message = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="new")
+    status = db.Column(db.String(20), nullable=False, default="sent")
     admin_comment = db.Column(db.Text)
+    responded_at = db.Column(db.DateTime)
+    response_emailed_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     user = db.relationship("User", back_populates="feedback_requests")
 
+    def status_label(self):
+        labels = {
+            "new": "Отправлено",
+            "sent": "Отправлено",
+            "in_progress": "В работе",
+            "closed": "Закрыто",
+        }
+        return labels.get(self.status, self.status)
 
+    def status_badge_class(self):
+        classes = {
+            "new": "text-bg-info",
+            "sent": "text-bg-info",
+            "in_progress": "text-bg-warning",
+            "closed": "text-bg-success",
+        }
+        return classes.get(self.status, "text-bg-secondary")
+
+    def is_closed(self):
+        return self.status == "closed"
 class RefundLog(db.Model):
     __tablename__ = "refund_logs"
 

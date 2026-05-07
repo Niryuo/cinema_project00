@@ -65,24 +65,82 @@
     <hr>
 {% endfor %}
 
-<h3 class="mt-4">Заявки обратной связи</h3>
+<h3 class="mt-4">Актуальные заявки</h3>
 <div class="table-responsive">
     <table class="table table-dark table-striped align-middle">
-        <thead><tr><th>Клиент</th><th>Тема</th><th>Канал</th><th>Содержание</th><th>Дата</th></tr></thead>
+        <thead>
+        <tr>
+            <th>Клиент</th>
+            <th>Тема</th>
+            <th>Канал</th>
+            <th>Содержание</th>
+            <th>Статус</th>
+            <th>Дата</th>
+            <th>Ответ</th>
+        </tr>
+        </thead>
         <tbody>
-        {% for item in feedback_requests %}
+        {% for item in active_feedback_requests %}
             <tr>
                 <td>{{ item.user.username }}<br><small>{{ item.user.email }}</small></td>
                 <td>{{ item.subject }}<br><small>{{ item.topic }}</small></td>
                 <td>{{ 'Почта' if item.preferred_contact == 'email' else 'Лично' }}</td>
                 <td>{{ item.message }}</td>
-                <td>{{ item.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td><span class="badge {{ item.status_badge_class() }}">{{ item.status_label() }}</span></td>
+                <td>{{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else '—' }}</td>
+                <td style="min-width: 260px;">
+                    <form method="POST" action="{{ url_for('main.admin_reply_feedback', feedback_id=item.id) }}">
+                        <textarea name="admin_comment" class="form-control form-control-sm mb-2" rows="3" placeholder="Напишите ответ клиенту" required>{{ item.admin_comment or '' }}</textarea>
+                        <button type="submit" class="btn btn-sm btn-cinema w-100">Ответить и закрыть</button>
+                    </form>
+                </td>
             </tr>
         {% else %}
-            <tr><td colspan="5">Пока нет заявок.</td></tr>
+            <tr><td colspan="5">Актуальных заявок нет.</td></tr>
         {% endfor %}
         </tbody>
     </table>
+</div>
+
+<div class="accordion mt-3" id="closedFeedbackAccordion">
+    <div class="accordion-item bg-dark text-light border-secondary">
+        <h2 class="accordion-header" id="closedFeedbackHeading">
+            <button class="accordion-button collapsed bg-dark text-light" type="button" data-bs-toggle="collapse" data-bs-target="#closedFeedback" aria-expanded="false" aria-controls="closedFeedback">
+                Завершенные заявки ({{ closed_feedback_requests|length }})
+            </button>
+        </h2>
+        <div id="closedFeedback" class="accordion-collapse collapse" aria-labelledby="closedFeedbackHeading" data-bs-parent="#closedFeedbackAccordion">
+            <div class="accordion-body">
+                {% if closed_feedback_requests %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped align-middle mb-0">
+                            <thead><tr><th>Клиент</th><th>Тема</th><th>Ответ</th><th>Email</th><th>Закрыто</th></tr></thead>
+                            <tbody>
+                            {% for item in closed_feedback_requests %}
+                                <tr>
+                                    <td>{{ item.user.username }}<br><small>{{ item.user.email }}</small></td>
+                                    <td>{{ item.subject }}<br><small>{{ item.message }}</small></td>
+                                    <td>{{ item.admin_comment or '—' }}</td>
+                                    <td>
+                                        {% if item.response_emailed_at %}
+                                            <span class="badge text-bg-success">Письмо отправлено</span><br>
+                                            <small>{{ item.response_emailed_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                                        {% else %}
+                                            <span class="badge text-bg-warning">Письмо не отправлено</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge {{ item.status_badge_class() }}">{{ item.status_label() }}</span><br><small>{{ item.responded_at.strftime('%d.%m.%Y %H:%M') if item.responded_at else '—' }}</small></td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="mb-0 text-secondary">Завершенных заявок пока нет.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 <h3 class="mt-4">Бронирования и билеты (последние 30)</h3>
