@@ -53,6 +53,9 @@
     <div class="mb-2">
         <strong>{{ movie.title }}</strong>
          <span class="text-secondary">{{ movie.duration }} мин</span>
+        {% if movie.genre%}<span class="text-secondary">· {{ movie.genre }}</span>{% endif %}
+         {% if movie.production_year %}<span class="text-secondary">· {{ movie.production_year }}</span>{% endif %}
+         {% if movie.age_rating %}<span class="text-secondary">· {{ movie.age_rating }}</span>{% endif %}
         <div>
             <a href="{{ url_for('main.movie_detail', id=movie.id) }}">Открыть страницу фильма</a> |
             <a href="{{ url_for('main.edit_movie', id=movie.id) }}">Редактировать</a> |

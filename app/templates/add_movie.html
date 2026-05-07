@@ -166,7 +166,6 @@
     </div>
 
  <form method="POST" enctype="multipart/form-data">
-     <input type="file" name="poster">
         <div class="form-group">
             <label class="form-label" for="title">
                 <i class="fas fa-heading"></i>Название фильма
@@ -201,6 +200,54 @@
             <div class="form-hint">
                 <i class="fas fa-info-circle"></i>Укажите длительность фильма в минутах
             </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="genre">
+                <i class="fas fa-masks-theater"></i>Жанр
+            </label>
+            <input type="text" class="form-control" id="genre" name="genre"
+                   placeholder="Например: фантастика, драма" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="director">
+                <i class="fas fa-video"></i>Режиссер
+            </label>
+            <input type="text" class="form-control" id="director" name="director"
+                   placeholder="Введите имя режиссера" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="actors">
+                <i class="fas fa-users"></i>Актеры
+            </label>
+            <textarea class="form-control" id="actors" name="actors"
+                      placeholder="Перечислите основных актеров" required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="country">
+                <i class="fas fa-globe"></i>Страна
+            </label>
+            <input type="text" class="form-control" id="country" name="country"
+                   placeholder="Например: США" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="production_year">
+                <i class="fas fa-calendar"></i>Год производства
+            </label>
+            <input type="number" class="form-control" id="production_year" name="production_year"
+                   placeholder="2024" min="1888" max="2100" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="age_rating">
+                <i class="fas fa-user-shield"></i>Возрастное ограничение
+            </label>
+            <input type="text" class="form-control" id="age_rating" name="age_rating"
+                   placeholder="Например: 12+" required>
         </div>
          <div class="form-group">
                 <label class="form-label" for="poster">

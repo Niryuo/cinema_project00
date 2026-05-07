@@ -113,6 +113,12 @@ class Movie(db.Model):
     description = db.Column(db.Text)
     poster_path = db.Column(db.String(255))
     duration = db.Column(db.Integer)
+    genre = db.Column(db.String(120))
+    director = db.Column(db.String(150))
+    actors = db.Column(db.Text)
+    country = db.Column(db.String(120))
+    production_year = db.Column(db.Integer)
+    age_rating = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     screenings = db.relationship("Screening", back_populates="movie", cascade="all, delete-orphan")
 

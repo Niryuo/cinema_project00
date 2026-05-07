@@ -4,9 +4,50 @@
 <h2>Редактирование фильма</h2>
 
 <form method="POST" class="mb-4" enctype="multipart/form-data">
-    <input type="text" name="title" value="{{ movie.title }}"><br><br>
-    <textarea name="description">{{ movie.description }}</textarea><br><br>
-    <input type="number" name="duration" value="{{ movie.duration }}"><br><br>
+   <div class="mb-3">
+        <label class="form-label" for="title">Название фильма</label>
+        <input class="form-control" type="text" id="title" name="title" value="{{ movie.title }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="description">Описание</label>
+        <textarea class="form-control" id="description" name="description" required>{{ movie.description }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="duration">Продолжительность (в минутах)</label>
+        <input class="form-control" type="number" id="duration" name="duration" value="{{ movie.duration }}" min="1" max="600" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="genre">Жанр</label>
+        <input class="form-control" type="text" id="genre" name="genre" value="{{ movie.genre or '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="director">Режиссер</label>
+        <input class="form-control" type="text" id="director" name="director" value="{{ movie.director or '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="actors">Актеры</label>
+        <textarea class="form-control" id="actors" name="actors" required>{{ movie.actors or '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="country">Страна</label>
+        <input class="form-control" type="text" id="country" name="country" value="{{ movie.country or '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="production_year">Год производства</label>
+        <input class="form-control" type="number" id="production_year" name="production_year" value="{{ movie.production_year or '' }}" min="1888" max="2100" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="age_rating">Возрастное ограничение</label>
+        <input class="form-control" type="text" id="age_rating" name="age_rating" value="{{ movie.age_rating or '' }}" required>
+    </div>
     <label for="poster">Новое фото фильма:</label><br>
     <input type="file" id="poster" name="poster" accept="image/*"><br>
     {% if movie.poster_path %}

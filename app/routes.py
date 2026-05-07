@@ -408,6 +408,12 @@ def add_movie():
         title = request.form.get("title")
         description = request.form.get("description")
         duration = int(request.form.get("duration"))
+        genre = request.form.get("genre")
+        director = request.form.get("director")
+        actors = request.form.get("actors")
+        country = request.form.get("country")
+        production_year = int(request.form.get("production_year"))
+        age_rating = request.form.get("age_rating")
         poster_path = _save_upload(request.files.get("poster"))
 
 
@@ -415,6 +421,12 @@ def add_movie():
             title=title,
             description=description,
             duration=duration,
+            genre=genre,
+            director=director,
+            actors=actors,
+            country=country,
+            production_year=production_year,
+            age_rating=age_rating,
             poster_path=poster_path,
         )
 
@@ -492,6 +504,12 @@ def edit_movie(id):
         movie.title = request.form.get("title")
         movie.description = request.form.get("description")
         movie.duration = int(request.form.get("duration"))
+        movie.genre = request.form.get("genre")
+        movie.director = request.form.get("director")
+        movie.actors = request.form.get("actors")
+        movie.country = request.form.get("country")
+        movie.production_year = int(request.form.get("production_year"))
+        movie.age_rating = request.form.get("age_rating")
 
         new_poster = _save_upload(request.files.get("poster"))
         if new_poster:

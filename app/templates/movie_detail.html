@@ -29,6 +29,16 @@
         border-radius: 999px;
         padding: 0.35rem 0.75rem;
     }
+
+    .movie-details-list {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    .movie-details-list p { margin-bottom: 0.55rem; }
+    .movie-details-list p:last-child { margin-bottom: 0; }
 </style>
 {% endblock %}
 
@@ -38,7 +48,15 @@
 <img src="{{ url_for('static', filename=movie.poster_path) }}" alt="Постер {{ movie.title }}" class="img-fluid rounded mb-3" style="max-height: 420px; object-fit: cover;">
 {% endif %}
 <p>{{ movie.description }}</p>
-<p><strong>Длительность:</strong> {{ movie.duration }} мин</p>
+<div class="movie-details-list">
+    <p><strong>Длительность:</strong> {{ movie.duration }} мин</p>
+    <p><strong>Жанр:</strong> {{ movie.genre or 'Не указан' }}</p>
+    <p><strong>Режиссер:</strong> {{ movie.director or 'Не указан' }}</p>
+    <p><strong>Актеры:</strong> {{ movie.actors or 'Не указаны' }}</p>
+    <p><strong>Страна:</strong> {{ movie.country or 'Не указана' }}</p>
+    <p><strong>Год производства:</strong> {{ movie.production_year or 'Не указан' }}</p>
+    <p><strong>Возрастное ограничение:</strong> {{ movie.age_rating or 'Не указано' }}</p>
+</div>
 
 {% if current_user.is_authenticated and current_user.role == 'admin' %}
     <a class="btn btn-cinema mb-4" href="{{ url_for('main.add_screening', movie_id=movie.id) }}">

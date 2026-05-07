@@ -118,7 +118,22 @@
         line-height: 1.6;
         margin-bottom: 1rem;
     }
+    .movie-meta {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
 
+    .movie-meta span {
+        display: inline-block;
+        margin-right: 0.75rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .movie-meta i {
+        color: var(--accent-gold);
+        margin-right: 0.3rem;
+    }
     .movie-duration {
         display: inline-flex;
         align-items: center;
@@ -264,6 +279,11 @@
             <div class="movie-info">
                 <h3 class="movie-title">{{ movie.title }}</h3>
                 <p class="movie-description">{{ movie.description }}</p>
+                <div class="movie-meta">
+                    {% if movie.genre %}<span><i class="fas fa-masks-theater"></i>{{ movie.genre }}</span>{% endif %}
+                    {% if movie.production_year %}<span><i class="fas fa-calendar"></i>{{ movie.production_year }}</span>{% endif %}
+                    {% if movie.age_rating %}<span><i class="fas fa-user-shield"></i>{{ movie.age_rating }}</span>{% endif %}
+                </div>
                 <div class="movie-duration">
                     <i class="far fa-clock"></i>
                     {{ movie.duration }} мин
