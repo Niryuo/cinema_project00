@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Избранное - Cinema Project{% endblock %}
+
+{% block extra_css %}
+<style>
+    .favorites-hero {
+        background: linear-gradient(135deg, rgba(229, 9, 20, 0.22), rgba(255, 215, 0, 0.1));
+        border: 1px solid rgba(229, 9, 20, 0.25);
+        border-radius: 26px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .favorite-card {
+        background: rgba(31, 31, 31, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 16px 42px rgba(0, 0, 0, 0.35);
+        height: 100%;
+    }
+
+    .favorite-poster {
+        min-height: 280px;
+        background: rgba(255, 255, 255, 0.04);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .favorite-poster img {
+        width: 100%;
+        height: 100%;
+        min-height: 280px;
+        object-fit: cover;
+    }
+
+    .favorite-poster i {
+        color: var(--primary-color);
+        font-size: 4rem;
+        opacity: 0.65;
+    }
+
+    .favorite-meta {
+        color: var(--text-secondary);
+        display: grid;
+        gap: 0.5rem;
+    }
+
+    .favorite-meta i {
+        color: var(--accent-gold);
+        width: 1.2rem;
+    }
+
+    .empty-favorites {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px dashed rgba(255, 255, 255, 0.18);
+        border-radius: 24px;
+        padding: 4rem 2rem;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="favorites-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
+    <div>
+        <p class="text-uppercase text-secondary fw-bold mb-1">Личный список</p>
+        <h2 class="mb-2"><i class="fas fa-heart text-danger me-2"></i>Избранное</h2>
+        <p class="mb-0 text-secondary">Сохраняйте сеансы, пока выбираете фильм, и возвращайтесь к ним позже.</p>
+    </div>
+    <a href="{{ url_for('main.index') }}" class="btn btn-cinema"><i class="fas fa-film me-2"></i>Смотреть сеансы</a>
+</div>
+
+{% if favorite_items %}
+    <div class="row g-4">
+        {% for favorite in favorite_items %}
+            {% set screening = favorite.screening %}
+            {% set movie = screening.movie %}
+            {% set status = statuses[favorite.id] %}
+            <div class="col-lg-6">
+                <div class="favorite-card">
+                    <div class="row g-0 h-100">
+                        <div class="col-md-5">
+                            <div class="favorite-poster h-100">
+                                {% if screening.poster_override_path or movie.poster_path %}
+                                    <img src="{{ url_for('static', filename=screening.poster_override_path or movie.poster_path) }}" alt="Постер {{ movie.title }}">
+                                {% else %}
+                                    <i class="fas fa-film"></i>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-7">
+                            <div class="p-4 h-100 d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                                    <div>
+                                        <h4 class="mb-1">{{ movie.title }}</h4>
+                                        <span class="badge {{ status.badge }}"><i class="fas {{ status.icon }} me-1"></i>{{ status.label }}</span>
+                                    </div>
+                                </div>
+
+                                <p class="text-secondary small mb-3">{{ movie.description }}</p>
+
+                                <div class="favorite-meta mb-3">
+                                    <div><i class="fas fa-calendar-days"></i>{{ screening.start_time.strftime('%d.%m.%Y') if screening.start_time else 'Дата не указана' }}</div>
+                                    <div><i class="fas fa-clock"></i>{{ screening.start_time.strftime('%H:%M') if screening.start_time else 'Время не указано' }}</div>
+                                    <div><i class="fas fa-door-open"></i>{{ screening.hall_name or 'Зал не указан' }}</div>
+                                    <div><i class="fas fa-ticket"></i>{{ '%.2f'|format(screening.ticket_price) }} ₽</div>
+                                    {% if movie.genre %}<div><i class="fas fa-masks-theater"></i>{{ movie.genre }}</div>{% endif %}
+                                    {% if movie.age_rating %}<div><i class="fas fa-user-shield"></i>{{ movie.age_rating }}</div>{% endif %}
+                                </div>
+
+                                {% if status.booking %}
+                                    <div class="alert alert-success py-2 small">
+                                        Билет {{ status.booking.ticket_code }} · ряд {{ status.booking.seat_row }}, место {{ status.booking.seat_col }}
+                                    </div>
+                                {% elif status.code == 'no_screenings' %}
+                                    <div class="alert alert-warning py-2 small">
+                                        Вы не покупали билет на этот сеанс, а актуальных сеансов фильма уже нет.
+                                    </div>
+                                {% endif %}
+
+                                <div class="mt-auto d-flex gap-2 flex-wrap">
+                                    <a href="{{ url_for('main.movie_detail', id=movie.id) }}" class="btn btn-cinema btn-sm">Подробнее</a>
+                                    <form method="POST" action="{{ url_for('main.remove_favorite', favorite_id=favorite.id) }}">
+                                        <button type="submit" class="btn btn-outline-cinema btn-sm">Убрать из избранного</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-favorites">
+        <i class="far fa-heart fa-4x text-danger mb-3"></i>
+        <h3>В избранном пока пусто</h3>
+        <p class="text-secondary">Откройте страницу фильма и сохраните интересный сеанс, чтобы не потерять его.</p>
+        <a href="{{ url_for('main.index') }}" class="btn btn-cinema mt-2">Перейти к фильмам</a>
+    </div>
+{% endif %}
+{% endblock %}

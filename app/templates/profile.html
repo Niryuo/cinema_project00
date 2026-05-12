@@ -126,7 +126,12 @@
         <p class="text-uppercase text-secondary fw-bold mb-1">Кабинет клиента</p>
         <h2 class="mb-0">Здравствуйте, {{ current_user.username }}!</h2>
     </div>
-    <a href="{{ url_for('main.index') }}" class="btn btn-cinema"><i class="fas fa-ticket me-2"></i>Выбрать билет</a>
+    <div class="d-flex gap-2 flex-wrap">
+        {% if current_user.role != 'admin' %}
+            <a href="{{ url_for('main.favorites') }}" class="btn btn-outline-cinema"><i class="fas fa-heart me-2"></i>Избранное</a>
+        {% endif %}
+        <a href="{{ url_for('main.index') }}" class="btn btn-cinema"><i class="fas fa-ticket me-2"></i>Выбрать билет</a>
+    </div>
 </div>
 
 <div class="profile-hero p-3 p-lg-4 mb-4">

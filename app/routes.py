@@ -6,7 +6,7 @@ import uuid
 from email.message import EmailMessage
 
 from app import db
-from app.models import Booking, FeedbackRequest, Movie, RefundLog, Screening, User
+from app.models import Booking, FavoriteScreening, FeedbackRequest, Movie, RefundLog, Screening, User
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -81,6 +81,56 @@ def _loyalty_payment_quote(user, ticket_price, payment_mode="save"):
         "earned_points": earned_points,
     }
 
+
+def _favorite_status(favorite):
+    now = datetime.utcnow()
+    paid_booking = (
+        Booking.query.filter_by(
+            user_id=favorite.user_id,
+            screening_id=favorite.screening_id,
+            status="paid",
+        )
+        .order_by(Booking.paid_at.desc(), Booking.created_at.desc())
+        .first()
+    )
+
+    if paid_booking:
+        if favorite.screening.start_time and favorite.screening.start_time > now:
+            return {
+                "code": "planned",
+                "label": "Планируемые",
+                "badge": "text-bg-primary",
+                "icon": "fa-calendar-check",
+                "booking": paid_booking,
+            }
+        return {
+            "code": "watched",
+            "label": "Просмотрено",
+            "badge": "text-bg-success",
+            "icon": "fa-circle-check",
+            "booking": paid_booking,
+        }
+
+    has_upcoming_screenings = Screening.query.filter(
+        Screening.movie_id == favorite.screening.movie_id,
+        Screening.start_time >= now,
+    ).first()
+    if not has_upcoming_screenings:
+        return {
+            "code": "no_screenings",
+            "label": "Сеансов больше нет",
+            "badge": "text-bg-warning",
+            "icon": "fa-calendar-xmark",
+            "booking": None,
+        }
+
+    return {
+        "code": "empty",
+        "label": "В избранном",
+        "badge": "text-bg-secondary",
+        "icon": "fa-heart",
+        "booking": None,
+    }
 def _generate_ticket_code():
     while True:
         code = f"CP-TKT-{secrets.token_hex(4).upper()}"
@@ -195,6 +245,7 @@ def movie_detail(id):
 
     screenings_data = []
     user_booking_ids = set()
+    favorite_screening_ids = set()
     if current_user.is_authenticated:
         _ensure_loyalty_card(current_user)
         current_user.update_loyalty_status()
@@ -205,6 +256,10 @@ def movie_detail(id):
                 Booking.user_id == current_user.id,
                 Booking.status.in_(["reserved", "confirmed", "paid"]),
             ).all()}
+        favorite_screening_ids = {
+            favorite.screening_id
+            for favorite in FavoriteScreening.query.filter_by(user_id=current_user.id).all()
+        }
 
     for screening in screenings:
         active_bookings = Booking.query.filter(
@@ -233,6 +288,7 @@ def movie_detail(id):
         screenings_data=screenings_data,
         my_bookings=my_bookings,
         user_booking_ids=user_booking_ids,
+        favorite_screening_ids=favorite_screening_ids,
     )
 
 @main.route("/register", methods=["GET", "POST"])
@@ -343,6 +399,61 @@ def profile():
     )
 
 
+@main.route("/favorites")
+@login_required
+def favorites():
+    _release_expired_bookings(notify_user_id=current_user.id)
+    favorite_items = (
+        FavoriteScreening.query.join(FavoriteScreening.screening).join(Screening.movie)
+        .filter(FavoriteScreening.user_id == current_user.id)
+        .order_by(FavoriteScreening.created_at.desc())
+        .all()
+    )
+    statuses = {favorite.id: _favorite_status(favorite) for favorite in favorite_items}
+
+    return render_template(
+        "favorites.html",
+        favorite_items=favorite_items,
+        statuses=statuses,
+    )
+
+
+@main.route("/screenings/<int:screening_id>/favorite", methods=["POST"])
+@login_required
+def add_favorite(screening_id):
+    if current_user.role == "admin":
+        flash("Избранное доступно клиентам.", "danger")
+        return redirect(request.referrer or url_for("main.index"))
+
+    screening = Screening.query.get_or_404(screening_id)
+    favorite = FavoriteScreening.query.filter_by(
+        user_id=current_user.id,
+        screening_id=screening.id,
+    ).first()
+
+    if favorite:
+        flash("Этот сеанс уже есть в избранном.", "success")
+    else:
+        db.session.add(FavoriteScreening(user_id=current_user.id, screening_id=screening.id))
+        db.session.commit()
+        flash("Сеанс добавлен в избранное.", "success")
+
+    return redirect(request.referrer or url_for("main.movie_detail", id=screening.movie_id))
+
+
+@main.route("/favorites/<int:favorite_id>/remove", methods=["POST"])
+@login_required
+def remove_favorite(favorite_id):
+    favorite = FavoriteScreening.query.get_or_404(favorite_id)
+    if favorite.user_id != current_user.id:
+        return "Доступ запрещён", 403
+
+    movie_id = favorite.screening.movie_id
+    db.session.delete(favorite)
+    db.session.commit()
+    flash("Сеанс удалён из избранного.", "success")
+
+    return redirect(request.referrer or url_for("main.movie_detail", id=movie_id))
 @main.route("/profile/history")
 @login_required
 def profile_history():

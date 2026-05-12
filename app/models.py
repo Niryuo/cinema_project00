@@ -21,6 +21,7 @@ class User(UserMixin, db.Model):
     loyalty_status = db.Column(db.String(20), nullable=False, default="guest")
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     bookings = db.relationship("Booking", back_populates="user", foreign_keys="Booking.user_id", cascade="all, delete-orphan")
+    favorite_screenings = db.relationship("FavoriteScreening", back_populates="user", cascade="all, delete-orphan")
     feedback_requests = db.relationship("FeedbackRequest", back_populates="user", cascade="all, delete-orphan")
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -136,7 +137,24 @@ class Screening(db.Model):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     movie = db.relationship("Movie", back_populates="screenings")
     bookings = db.relationship("Booking", back_populates="screening", cascade="all, delete-orphan")
+    favorites = db.relationship("FavoriteScreening", back_populates="screening", cascade="all, delete-orphan")
 
+
+class FavoriteScreening(db.Model):
+    __tablename__ = "favorite_screenings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    screening_id = db.Column(db.Integer, db.ForeignKey("screenings.id"), nullable=False)
+    note = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    user = db.relationship("User", back_populates="favorite_screenings")
+    screening = db.relationship("Screening", back_populates="favorites")
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "screening_id", name="uq_favorite_screenings_user_screening"),
+    )
 
 class Booking(db.Model):
     __tablename__ = "bookings"

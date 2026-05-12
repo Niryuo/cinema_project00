@@ -80,6 +80,20 @@
                         <p class="mb-0"><strong>Фильм:</strong> {{ movie.title }}</p>
                     </div>
                     <div>
+                    <div class="text-lg-end">
+                        {% if current_user.is_authenticated and current_user.role != 'admin' %}
+                            {% if screening.id in favorite_screening_ids %}
+                                <a class="btn btn-outline-cinema mb-2" href="{{ url_for('main.favorites') }}">
+                                    <i class="fas fa-heart me-1"></i>В избранном
+                                </a>
+                            {% else %}
+                                <form method="POST" action="{{ url_for('main.add_favorite', screening_id=screening.id) }}" class="mb-2">
+                                    <button type="submit" class="btn btn-outline-cinema">
+                                        <i class="far fa-heart me-1"></i>Добавить в избранное
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
                         {% if screening.poster_override_path %}
                             <img src="{{ url_for('static', filename=screening.poster_override_path) }}" alt="Фото сеанса" class="rounded" style="max-height: 140px; object-fit: cover;">
                         {% endif %}
