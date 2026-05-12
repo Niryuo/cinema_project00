@@ -119,10 +119,18 @@
                                     <div class="alert alert-warning py-2 small">
                                         Вы не покупали билет на этот сеанс, а актуальных сеансов фильма уже нет.
                                     </div>
+                                {% elif status.code == 'deleted' %}
+                                    <div class="alert alert-secondary py-2 small">
+                                        Сеанс снят с афиши и сохранен в истории как завершенный.
+                                    </div>
                                 {% endif %}
 
                                 <div class="mt-auto d-flex gap-2 flex-wrap">
-                                    <a href="{{ url_for('main.movie_detail', id=movie.id) }}" class="btn btn-cinema btn-sm">Подробнее</a>
+                                    {% if movie.is_deleted or screening.is_deleted %}
+                                        <a href="{{ url_for('main.profile_history') }}" class="btn btn-cinema btn-sm">Открыть историю</a>
+                                    {% else %}
+                                        <a href="{{ url_for('main.movie_detail', id=movie.id) }}" class="btn btn-cinema btn-sm">Подробнее</a>
+                                    {% endif %}
                                     <form method="POST" action="{{ url_for('main.remove_favorite', favorite_id=favorite.id) }}">
                                         <button type="submit" class="btn btn-outline-cinema btn-sm">Убрать из избранного</button>
                                     </form>

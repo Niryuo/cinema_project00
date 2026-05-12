@@ -237,7 +237,10 @@
                             <div>
                                 <div class="text-secondary small">{{ booking.ticket_code }}</div>
                                 <h5 class="mb-1">{{ booking.screening.movie.title }}</h5>
-                                <div class="small text-secondary">{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }} · {{ booking.screening.hall_name }}</div>
+                                <div class="small text-secondary">{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') if booking.screening.start_time else 'Дата не указана' }} · {{ booking.screening.hall_name or 'Зал не указан' }}</div>
+                                {% if booking.screening.is_deleted or booking.screening.movie.is_deleted %}
+                                    <span class="badge text-bg-secondary mt-1">Завершенный сеанс</span>
+                                {% endif %}
                                 <div class="small text-secondary">Ряд {{ booking.seat_row }}, место {{ booking.seat_col }}</div>
                             </div>
                             <img src="{{ ticket_qr_url(booking) }}" alt="QR {{ booking.ticket_code }}" width="104" height="104" class="border rounded bg-white p-1">
@@ -332,8 +335,14 @@
                 <tbody>
                     {% for booking in bookings %}
                         <tr>
-                            <td>{{ booking.screening.movie.title }}</td>
-                            <td>{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>
+                                {{ booking.screening.movie.title }}
+                                {% if booking.screening.movie.is_deleted %}<br><span class="badge text-bg-dark">Фильм снят с афиши</span>{% endif %}
+                            </td>
+                            <td>
+                                {{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') if booking.screening.start_time else 'Дата не указана' }}
+                                {% if booking.screening.is_deleted or booking.screening.movie.is_deleted %}<br><span class="badge text-bg-secondary">Завершенный сеанс</span>{% endif %}
+                            </td>
                             <td>Ряд {{ booking.seat_row }}, место {{ booking.seat_col }}</td>
                             <td><span class="badge text-bg-secondary">{{ booking.status }}</span></td>
                         </tr>

@@ -121,6 +121,8 @@ class Movie(db.Model):
     production_year = db.Column(db.Integer)
     age_rating = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
+    deleted_at = db.Column(db.DateTime)
     screenings = db.relationship("Screening", back_populates="movie", cascade="all, delete-orphan")
 
 
@@ -134,6 +136,8 @@ class Screening(db.Model):
     hall_cols = db.Column(db.Integer, nullable=False, default=10)
     ticket_price = db.Column(db.Float, nullable=False, default=450.0)
     poster_override_path = db.Column(db.String(255))
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
+    deleted_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     movie = db.relationship("Movie", back_populates="screenings")
     bookings = db.relationship("Booking", back_populates="screening", cascade="all, delete-orphan")

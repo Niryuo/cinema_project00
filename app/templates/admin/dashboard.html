@@ -59,7 +59,7 @@
         <div>
             <a href="{{ url_for('main.movie_detail', id=movie.id) }}">Открыть страницу фильма</a> |
             <a href="{{ url_for('main.edit_movie', id=movie.id) }}">Редактировать</a> |
-            <a href="{{ url_for('main.delete_movie', id=movie.id) }}">Удалить</a>
+             <a href="{{ url_for('main.delete_movie', id=movie.id) }}" onclick="return confirm('Снять фильм и его сеансы с афиши? История покупок, бронирований и заявок сохранится.');">Снять с афиши</a>
         </div>
     </div>
     <hr>
@@ -161,7 +161,12 @@
         {% for booking in latest_bookings %}
             <tr>
                 <td>{{ booking.user.username }}<br><small>{{ booking.user.email }}</small></td>
-                <td>{{ booking.screening.movie.title }}<br><small>{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</small></td>
+                <td>
+                    {{ booking.screening.movie.title }}
+                    {% if booking.screening.movie.is_deleted %}<span class="badge text-bg-dark ms-1">Фильм снят с афиши</span>{% endif %}
+                    <br><small>{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') if booking.screening.start_time else 'Дата не указана' }}</small>
+                    {% if booking.screening.is_deleted or booking.screening.movie.is_deleted %}<br><span class="badge text-bg-secondary">Завершенный сеанс</span>{% endif %}
+                </td>
                 <td>{{ booking.seat_row }}-{{ booking.seat_col }}</td>
                 <td>{{ booking.status }}</td>
                 <td>{{ booking.ticket_code or '—' }}</td>

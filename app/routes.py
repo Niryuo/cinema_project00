@@ -59,6 +59,28 @@ def _ensure_loyalty_card(user):
             user.loyalty_card_number = candidate
             break
 
+def _active_movie_query():
+    return Movie.query.filter(Movie.is_deleted.is_(False))
+
+
+def _active_screening_query():
+    return Screening.query.join(Screening.movie).filter(
+        Screening.is_deleted.is_(False),
+        Movie.is_deleted.is_(False),
+    )
+
+
+def _booking_screening_removed(booking):
+    return bool(booking.screening.is_deleted or booking.screening.movie.is_deleted)
+
+
+def _active_movie_or_404(movie_id):
+    return _active_movie_query().filter(Movie.id == movie_id).first_or_404()
+
+
+def _active_screening_or_404(screening_id):
+    return _active_screening_query().filter(Screening.id == screening_id).first_or_404()
+
 
 def _loyalty_payment_quote(user, ticket_price, payment_mode="save"):
     user.update_loyalty_status()
@@ -94,6 +116,14 @@ def _favorite_status(favorite):
         .first()
     )
 
+    if favorite.screening.is_deleted or favorite.screening.movie.is_deleted:
+        return {
+            "code": "deleted",
+            "label": "Завершенный сеанс",
+            "badge": "text-bg-dark",
+            "icon": "fa-box-archive",
+            "booking": paid_booking,
+        }
     if paid_booking:
         if favorite.screening.start_time and favorite.screening.start_time > now:
             return {
@@ -113,6 +143,7 @@ def _favorite_status(favorite):
 
     has_upcoming_screenings = Screening.query.filter(
         Screening.movie_id == favorite.screening.movie_id,
+        Screening.is_deleted.is_(False),
         Screening.start_time >= now,
     ).first()
     if not has_upcoming_screenings:
@@ -206,14 +237,18 @@ def index():
 
     if search_query:
         movies = (
-            Movie.query.filter(Movie.title.ilike(f"%{search_query}%"))
+            _active_movie_query()
+            .filter(Movie.title.ilike(f"%{search_query}%"))
             .order_by(Movie.created_at.desc())
             .all()
         )
         if movies:
             movie_ids = [movie.id for movie in movies]
             screenings = (
-                Screening.query.filter(Screening.movie_id.in_(movie_ids))
+                Screening.query.filter(
+                    Screening.movie_id.in_(movie_ids),
+                    Screening.is_deleted.is_(False),
+                )
                 .order_by(Screening.start_time.asc())
                 .all()
             )
@@ -225,7 +260,7 @@ def index():
         else:
             search_message = f"Фильм или сеанс по запросу «{search_query}» не найден."
     else:
-        movies = Movie.query.order_by(Movie.created_at.desc()).all()
+        movies = _active_movie_query().order_by(Movie.created_at.desc()).all()
 
     return render_template(
         "index.html",
@@ -240,8 +275,12 @@ def index():
 @main.route("/movies/<int:id>")
 def movie_detail(id):
     _release_expired_bookings(notify_user_id=current_user.id if current_user.is_authenticated else None)
-    movie = Movie.query.get_or_404(id)
-    screenings = Screening.query.filter_by(movie_id=movie.id).order_by(Screening.start_time.asc()).all()
+    movie = _active_movie_or_404(id)
+    screenings = (
+        Screening.query.filter_by(movie_id=movie.id, is_deleted=False)
+        .order_by(Screening.start_time.asc())
+        .all()
+    )
 
     screenings_data = []
     user_booking_ids = set()
@@ -277,6 +316,7 @@ def movie_detail(id):
                 Booking.user_id == current_user.id,
                 Booking.status.in_(["reserved", "confirmed", "paid"]),
                 Screening.movie_id == movie.id,
+                Screening.is_deleted.is_(False),
             )
             .order_by(Screening.start_time.asc())
             .all()
@@ -425,7 +465,7 @@ def add_favorite(screening_id):
         flash("Избранное доступно клиентам.", "danger")
         return redirect(request.referrer or url_for("main.index"))
 
-    screening = Screening.query.get_or_404(screening_id)
+    screening = _active_screening_or_404(screening_id)
     favorite = FavoriteScreening.query.filter_by(
         user_id=current_user.id,
         screening_id=screening.id,
@@ -449,11 +489,13 @@ def remove_favorite(favorite_id):
         return "Доступ запрещён", 403
 
     movie_id = favorite.screening.movie_id
+    movie_removed = favorite.screening.movie.is_deleted
     db.session.delete(favorite)
     db.session.commit()
     flash("Сеанс удалён из избранного.", "success")
 
-    return redirect(request.referrer or url_for("main.movie_detail", id=movie_id))
+    fallback = url_for("main.index") if movie_removed else url_for("main.movie_detail", id=movie_id)
+    return redirect(request.referrer or fallback)
 @main.route("/profile/history")
 @login_required
 def profile_history():
@@ -486,7 +528,7 @@ def admin_panel():
     _release_expired_bookings()
     if not _admin_required():
         return "Доступ запрещён", 403
-    movies = Movie.query.order_by(Movie.created_at.desc()).all()
+    movies = _active_movie_query().order_by(Movie.created_at.desc()).all()
     latest_bookings = (
         Booking.query.join(Booking.user).join(Screening).join(Movie)
         .order_by(Booking.created_at.desc())
@@ -592,11 +634,16 @@ def delete_movie(id):
     if not _admin_required():
         return "Доступ запрещён", 403
 
-    movie = Movie.query.get_or_404(id)
-    db.session.delete(movie)
+    movie = _active_movie_or_404(id)
+    deleted_at = datetime.utcnow()
+    movie.is_deleted = True
+    movie.deleted_at = deleted_at
+    for screening in movie.screenings:
+        screening.is_deleted = True
+        screening.deleted_at = screening.deleted_at or deleted_at
     db.session.commit()
 
-    flash("Фильм удален", "success")
+    flash("Фильм снят с афиши, история покупок и бронирований сохранена", "success")
     return redirect(url_for("main.admin_panel"))
 
 
@@ -606,7 +653,7 @@ def add_screening(movie_id):
     if not _admin_required():
         return "Доступ запрещён", 403
 
-    movie = Movie.query.get_or_404(movie_id)
+    movie = _active_movie_or_404(movie_id)
 
     if request.method == "POST":
         try:
@@ -646,7 +693,7 @@ def edit_movie(id):
     if not _admin_required():
         return "Доступ запрещён", 403
 
-    movie = Movie.query.get_or_404(id)
+    movie = _active_movie_or_404(id)
 
     if request.method == "POST":
         movie.title = request.form.get("title")
@@ -667,8 +714,11 @@ def edit_movie(id):
         flash("Фильм обновлен", "success")
         return redirect(url_for("main.edit_movie", id=movie.id))
 
-    screenings = Screening.query.filter_by(movie_id=movie.id).order_by(Screening.start_time.asc()).all()
-    return render_template("admin/edit_movie.html", movie=movie, screenings=screenings)
+    screenings = (
+        Screening.query.filter_by(movie_id=movie.id, is_deleted=False)
+        .order_by(Screening.start_time.asc())
+        .all()
+    )
 
 @main.route("/admin/screenings/<int:screening_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -676,7 +726,7 @@ def edit_screening(screening_id):
     if not _admin_required():
         return "Доступ запрещён", 403
 
-    screening = Screening.query.get_or_404(screening_id)
+    screening = _active_screening_or_404(screening_id)
 
     if request.method == "POST":
         hall_name = request.form.get("hall_name")
@@ -704,12 +754,25 @@ def edit_screening(screening_id):
         return redirect(url_for("main.movie_detail", id=screening.movie_id))
 
     return render_template("admin/edit_screening.html", movie=screening.movie, screening=screening)
+@main.route("/admin/screenings/<int:screening_id>/delete", methods=["POST"])
+@login_required
+def delete_screening(screening_id):
+    if not _admin_required():
+        return "Доступ запрещён", 403
 
+    screening = _active_screening_or_404(screening_id)
+    movie_id = screening.movie_id
+    screening.is_deleted = True
+    screening.deleted_at = datetime.utcnow()
+    db.session.commit()
+
+    flash("Сеанс снят с афиши, история бронирований и покупок сохранена", "success")
+    return redirect(url_for("main.edit_movie", id=movie_id))
 
 @main.route("/screenings/<int:screening_id>/book", methods=["POST"])
 @login_required
 def book_seat(screening_id):
-    screening = Screening.query.get_or_404(screening_id)
+    screening = _active_screening_or_404(screening_id)
     seat_row = int(request.form.get("seat_row"))
     seat_col = int(request.form.get("seat_col"))
 
@@ -758,6 +821,10 @@ def confirm_booking(booking_id):
     if booking.user_id != current_user.id:
         return "Доступ запрещён", 403
 
+    if _booking_screening_removed(booking):
+        flash("Сеанс снят с афиши. Бронирование сохранено в истории как завершенное.", "warning")
+        return redirect(url_for("main.profile_history"))
+
     if booking.status == "reserved" and booking.expires_at and booking.expires_at < datetime.utcnow():
         booking.status = "cancelled"
         booking.canceled_at = datetime.utcnow()
@@ -785,6 +852,10 @@ def pay_booking(booking_id):
     booking = Booking.query.get_or_404(booking_id)
     if booking.user_id != current_user.id:
         return "Доступ запрещён", 403
+
+    if _booking_screening_removed(booking):
+        flash("Сеанс снят с афиши. Оплата недоступна, история бронирования сохранена.", "warning")
+        return redirect(url_for("main.profile_history"))
 
     if booking.status != "confirmed":
         flash("Сначала подтвердите бронирование", "danger")
@@ -946,6 +1017,10 @@ def cancel_booking(booking_id):
 
     if booking.user_id != current_user.id:
         return "Доступ запрещён", 403
+
+    if _booking_screening_removed(booking):
+        flash("Сеанс снят с афиши. Запись сохранена в истории как завершенная.", "warning")
+        return redirect(url_for("main.profile_history"))
 
     if booking.status  == "cancelled":
         flash("Бронирование уже отменено", "danger")

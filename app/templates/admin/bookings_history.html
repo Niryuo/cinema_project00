@@ -1,11 +1,28 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Полная история бронирований и билетов</h2>
+<div class="alert alert-info">
+    Удаление фильма или сеанса снимает его с афиши, но не удаляет покупки, бронирования и связанные записи из истории.
+</div>
 <div class="table-responsive"><table class="table table-dark table-striped align-middle">
 <thead><tr><th>Клиент</th><th>Фильм/сеанс</th><th>Место</th><th>Статус</th><th>Билет</th></tr></thead>
 <tbody>
 {% for booking in bookings %}
-<tr><td>{{ booking.user.username }}</td><td>{{ booking.screening.movie.title }} {{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') }}</td><td>{{ booking.seat_row }}-{{ booking.seat_col }}</td><td>{{ booking.status }}</td><td>{{ booking.ticket_code or '—' }}</td></tr>
+{% set screening_removed = booking.screening.is_deleted or booking.screening.movie.is_deleted %}
+<tr>
+    <td>{{ booking.user.username }}<br><small>{{ booking.user.email }}</small></td>
+    <td>
+        {{ booking.screening.movie.title }}
+        {% if booking.screening.movie.is_deleted %}<span class="badge text-bg-dark ms-1">Фильм снят с афиши</span>{% endif %}
+        <br><small>{{ booking.screening.start_time.strftime('%d.%m.%Y %H:%M') if booking.screening.start_time else 'Дата не указана' }} · {{ booking.screening.hall_name or 'Зал не указан' }}</small>
+        {% if screening_removed %}<br><span class="badge text-bg-secondary">Завершенный сеанс</span>{% endif %}
+    </td>
+    <td>{{ booking.seat_row }}-{{ booking.seat_col }}</td>
+    <td>{{ booking.status }}</td>
+    <td>{{ booking.ticket_code or '—' }}</td>
+</tr>
+{% else %}
+<tr><td colspan="5">История пока пуста.</td></tr>
 {% endfor %}
 </tbody></table></div>
 {% endblock %}

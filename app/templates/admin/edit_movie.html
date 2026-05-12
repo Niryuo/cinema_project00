@@ -72,6 +72,9 @@
             <strong>{{ screening.start_time.strftime('%d.%m.%Y %H:%M') }}</strong>, {{ screening.hall_name }}
             ({{ screening.hall_rows }}x{{ screening.hall_cols }})
             — <a href="{{ url_for('main.edit_screening', screening_id=screening.id) }}">Редактировать зал</a>
+                        <form method="POST" action="{{ url_for('main.delete_screening', screening_id=screening.id) }}" class="d-inline" onsubmit="return confirm('Снять сеанс с афиши? История бронирований и покупок сохранится.');">
+                <button type="submit" class="btn btn-sm btn-link text-danger p-0 align-baseline">Снять с афиши</button>
+            </form>
         </div>
     {% endfor %}
 {% else %}
