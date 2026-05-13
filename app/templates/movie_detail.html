@@ -9,8 +9,34 @@
     .seat-free { background: #198754; color: #fff; }
     .seat-taken { background: #6c757d; color: #fff; cursor: not-allowed; }
     .seat-mine { background: #0d6efd; color: #fff; }
-    .screen { background: rgba(255,255,255,0.1); border-radius: 10px; text-align: center; padding: 0.7rem; margin-bottom: 1rem; }
-        .payment-panel {
+    .screen {
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+        text-align: center;
+        padding: 0.7rem;
+        margin-bottom: 1rem;
+        width: 100%;
+        letter-spacing: 0.08em;
+    }
+    .screening-actions {
+        margin-left: auto;
+        text-align: right;
+    }
+    .screening-actions .btn {
+        white-space: nowrap;
+    }
+    .screening-bookings-title {
+        margin: 3rem 0 1.25rem;
+        padding-left: 0.85rem;
+        border-left: 4px solid var(--primary-color);
+    }
+    @media (max-width: 576px) {
+        .screening-actions {
+            width: 100%;
+            text-align: left;
+        }
+    }
+    .payment-panel {
         background: linear-gradient(135deg, rgba(229, 9, 20, 0.14), rgba(255, 215, 0, 0.08));
         border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 20px;
@@ -80,7 +106,7 @@
                         <p class="mb-0"><strong>Фильм:</strong> {{ movie.title }}</p>
                     </div>
                     <div>
-                    <div class="text-lg-end">
+                    <div class="screening-actions">
                         {% if current_user.is_authenticated and current_user.role != 'admin' %}
                             {% if screening.id in favorite_screening_ids %}
                                 <a class="btn btn-outline-cinema mb-2" href="{{ url_for('main.favorites') }}">
@@ -111,30 +137,32 @@
                     </div>
                 </div>
 
-                <div class="screen">Экран</div>
-                <div class="seat-grid mb-3" style="grid-template-columns: repeat({{ screening.hall_cols }}, 42px);">
-                    {% for row in range(1, screening.hall_rows + 1) %}
-                        {% for col in range(1, screening.hall_cols + 1) %}
-                            {% set booking = occupied.get((row, col)) %}
-                            {% if booking %}
-                                {% if booking.id in user_booking_ids %}
-                                    <button type="button" class="seat seat-mine" title="Ваше место">{{ row }}-{{ col }}</button>
+                <div class="hall-layout">
+                    <div class="screen">Экран</div>
+                    <div class="seat-grid mb-3" style="grid-template-columns: repeat({{ screening.hall_cols }}, 42px);">
+                        {% for row in range(1, screening.hall_rows + 1) %}
+                            {% for col in range(1, screening.hall_cols + 1) %}
+                                {% set booking = occupied.get((row, col)) %}
+                                {% if booking %}
+                                    {% if booking.id in user_booking_ids %}
+                                        <button type="button" class="seat seat-mine" title="Ваше место">{{ row }}-{{ col }}</button>
+                                    {% else %}
+                                        <button type="button" class="seat seat-taken" disabled title="Занято">{{ row }}-{{ col }}</button>
+                                    {% endif %}
                                 {% else %}
-                                    <button type="button" class="seat seat-taken" disabled title="Занято">{{ row }}-{{ col }}</button>
+                                                                       {% if current_user.is_authenticated %}
+                                    <form method="POST" action="{{ url_for('main.book_seat', screening_id=screening.id) }}">
+                                        <input type="hidden" name="seat_row" value="{{ row }}">
+                                        <input type="hidden" name="seat_col" value="{{ col }}">
+                                        <button type="submit" class="seat seat-free" title="Забронировать">{{ row }}-{{ col }}</button>
+                                    </form>
+                                    {% else %}
+                                        <button type="button" class="seat seat-free" disabled title="Войдите, чтобы бронировать">{{ row }}-{{ col }}</button>
+                                    {% endif %}
                                 {% endif %}
-                            {% else %}
-                                {% if current_user.is_authenticated %}
-                                <form method="POST" action="{{ url_for('main.book_seat', screening_id=screening.id) }}">
-                                    <input type="hidden" name="seat_row" value="{{ row }}">
-                                    <input type="hidden" name="seat_col" value="{{ col }}">
-                                    <button type="submit" class="seat seat-free" title="Забронировать">{{ row }}-{{ col }}</button>
-                                </form>
-                                {% else %}
-                                    <button type="button" class="seat seat-free" disabled title="Войдите, чтобы бронировать">{{ row }}-{{ col }}</button>
-                                {% endif %}
-                            {% endif %}
                         {% endfor %}
                     {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -144,7 +172,7 @@
 {% endif %}
 
 {% if current_user.is_authenticated %}
-    <h3 class="mt-5">Мои бронирования по этому фильму</h3>
+    <h3 class="screening-bookings-title">Мои бронирования по этому фильму</h3>
     {% if my_bookings %}
         {% for booking in my_bookings %}
             <div class="card mb-3" style="background: var(--card-bg); color: var(--text-primary);">
