@@ -719,7 +719,7 @@ def edit_movie(id):
         .order_by(Screening.start_time.asc())
         .all()
     )
-
+    return render_template("admin/edit_movie.html", movie=movie, screenings=screenings)
 @main.route("/admin/screenings/<int:screening_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_screening(screening_id):

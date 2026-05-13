@@ -87,11 +87,17 @@
                                     <i class="fas fa-heart me-1"></i>В избранном
                                 </a>
                             {% else %}
-                                <form method="POST" action="{{ url_for('main.add_favorite', screening_id=screening.id) }}" class="mb-2">
+                            <div class="favorite-container">
+                                <form method="POST"
+                                      action="{{ url_for('main.add_favorite', screening_id=screening.id) }}"
+                                      class="mb-2">
+
                                     <button type="submit" class="btn btn-outline-cinema">
-                                        <i class="far fa-heart me-1"></i>Добавить в избранное
+                                        <i class="far fa-heart me-1"></i>
+                                        Добавить в избранное
                                     </button>
                                 </form>
+                            </div>
                             {% endif %}
                         {% endif %}
                         {% if screening.poster_override_path %}
