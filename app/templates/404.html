@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Страница не найдена — Cinema Project{% endblock %}
+
+{% block extra_css %}
+<style>
+    .not-found-wrap {
+        min-height: 60vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .not-found-card {
+        position: relative;
+        overflow: hidden;
+        width: min(100%, 920px);
+        padding: 4rem 3rem;
+        border: 1px solid rgba(229, 9, 20, 0.35);
+        border-radius: 32px;
+        background:
+            radial-gradient(circle at 15% 20%, rgba(229, 9, 20, 0.35), transparent 28%),
+            radial-gradient(circle at 85% 15%, rgba(255, 193, 7, 0.2), transparent 24%),
+            linear-gradient(145deg, rgba(26, 26, 26, 0.98), rgba(10, 10, 10, 0.96));
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+        text-align: center;
+    }
+
+    .not-found-card::before,
+    .not-found-card::after {
+        content: '';
+        position: absolute;
+        left: -10%;
+        width: 120%;
+        height: 18px;
+        background: repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.22) 0 22px,
+            transparent 22px 44px
+        );
+        opacity: 0.18;
+    }
+
+    .not-found-card::before { top: 28px; }
+    .not-found-card::after { bottom: 28px; }
+
+    .error-code {
+        font-family: 'Playfair Display', serif;
+        font-size: clamp(5rem, 18vw, 12rem);
+        line-height: 0.85;
+        font-weight: 900;
+        color: transparent;
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-gold));
+        -webkit-background-clip: text;
+        background-clip: text;
+        text-shadow: 0 20px 55px rgba(229, 9, 20, 0.35);
+    }
+
+    .not-found-icon {
+        width: 92px;
+        height: 92px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        border-radius: 50%;
+        color: var(--accent-gold);
+        background: rgba(255, 193, 7, 0.12);
+        border: 1px solid rgba(255, 193, 7, 0.32);
+        font-size: 2.6rem;
+    }
+
+    .not-found-actions {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 2rem;
+    }
+
+    @media (max-width: 576px) {
+        .not-found-card {
+            padding: 3rem 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="not-found-wrap">
+    <section class="not-found-card">
+        <div class="not-found-icon">
+            <i class="fas fa-ticket-simple"></i>
+        </div>
+        <div class="error-code">404</div>
+        <p class="text-uppercase text-secondary fw-bold mt-4 mb-2">Сеанс не найден</p>
+        <h1 class="display-6 fw-bold mb-3">Такой страницы нет в афише</h1>
+        <p class="lead text-secondary mb-0">
+            Возможно, ссылка устарела, фильм сняли с показа или адрес был введён с ошибкой.
+            Вернитесь на главную и выберите актуальный сеанс.
+        </p>
+        <div class="not-found-actions">
+            <a href="{{ url_for('main.index') }}" class="btn btn-cinema">
+                <i class="fas fa-home me-2"></i>На главную
+            </a>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('main.profile') }}" class="btn btn-outline-cinema">
+                    <i class="fas fa-user me-2"></i>В профиль
+                </a>
+            {% else %}
+                <a href="{{ url_for('main.login') }}" class="btn btn-outline-cinema">
+                    <i class="fas fa-sign-in-alt me-2"></i>Войти
+                </a>
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}

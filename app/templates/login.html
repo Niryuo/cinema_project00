@@ -154,7 +154,7 @@
     <form method="POST" action="{{ url_for('main.login') }}">
         <div class="form-floating">
             <input type="text" class="form-control" id="username" name="username"
-                   placeholder="Имя пользователя" required>
+                   placeholder="Имя пользователя" value="{{ username or '' }}" autocomplete="username" required>
             <label for="username"><i class="fas fa-user me-2"></i>Имя пользователя</label>
         </div>
 

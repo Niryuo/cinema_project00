@@ -6,8 +6,8 @@ import uuid
 from email.message import EmailMessage
 
 from app import db
+from app.forms import FeedbackForm
 from app.models import Booking, FavoriteScreening, FeedbackRequest, Movie, RefundLog, Screening, User
-from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.utils import secure_filename
@@ -605,35 +605,35 @@ def pay_booking(booking_id):
 @main.route("/feedback", methods=["POST"])
 @login_required
 def send_feedback():
+
+    form = FeedbackForm.from_mapping(request.form)
+
+    if not form.is_valid():
+        flash(form.first_error(), "danger")
+        return redirect(url_for("main.profile"))
+
     if current_user.role == "admin":
         flash("Администратор не может отправлять обратную связь самому себе.", "danger")
         return redirect(url_for("main.profile"))
-    subject = request.form.get("subject", "").strip()
-    message = request.form.get("message", "").strip()
-    topic = request.form.get("topic", "question")
-    preferred_contact = request.form.get("preferred_contact", "email")
-
-    if not subject or not message:
-        flash("Укажите тему и текст обращения", "danger")
-        return redirect(url_for("main.profile"))
-    if topic not in {"question", "complaint", "suggestion", "loyalty"}:
-        topic = "question"
-    if preferred_contact not in {"email", "phone", "messenger"}:
-        preferred_contact = "email"
 
     feedback = FeedbackRequest(
         user_id=current_user.id,
-        topic=topic,
-        preferred_contact=preferred_contact,
-        subject=subject,
-        message=message,
+        topic=form.topic,
+        preferred_contact=form.preferred_contact,
+        subject=form.subject,
+        message=form.message,
         status="sent",
     )
+
     db.session.add(feedback)
     db.session.commit()
-    flash("Спасибо за обратную связь! Мы получили обращение и скоро ответим удобным способом.", "success")
-    return redirect(url_for("main.profile"))
 
+    flash(
+        "Спасибо за обратную связь! Мы получили обращение и скоро ответим удобным способом.",
+        "success",
+    )
+
+    return redirect(url_for("main.profile"))
 @main.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
 @login_required
 def cancel_booking(booking_id):
