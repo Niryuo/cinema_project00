@@ -156,27 +156,40 @@
     <form method="POST" action="{{ url_for('main.register') }}">
         <div class="form-floating">
             <input type="text" class="form-control" id="username" name="username"
-                   placeholder="Имя пользователя" required>
+                   placeholder="Имя пользователя" value="{{ username or '' }}"
+                   autocomplete="username" maxlength="100" required>
             <label for="username"><i class="fas fa-user me-2"></i>Имя пользователя</label>
         </div>
 
         <div class="form-floating">
             <input type="email" class="form-control" id="email" name="email"
-                   placeholder="Email" required>
+                   placeholder="Email" value="{{ email or '' }}"
+                   autocomplete="email" maxlength="150" required>
             <label for="email"><i class="fas fa-envelope me-2"></i>Email</label>
         </div>
 
         <div class="form-floating">
             <input type="password" class="form-control" id="password" name="password"
-                   placeholder="Пароль" required>
+                   placeholder="Пароль" autocomplete="new-password" minlength="6"
+                   pattern="(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}"
+                   title="Минимум 6 символов: только латинские буквы и цифры, минимум одна буква и одна цифра" required>
             <label for="password"><i class="fas fa-lock me-2"></i>Пароль</label>
         </div>
+
+        <div class="form-floating">
+            <input type="password" class="form-control" id="password_confirm" name="password_confirm"
+                   placeholder="Повторите пароль" autocomplete="new-password" minlength="6" required>
+            <label for="password_confirm"><i class="fas fa-lock me-2"></i>Повторите пароль</label>
+        </div>
+
 
         <div class="password-requirements">
             <strong><i class="fas fa-shield-alt me-2"></i>Требования к паролю:</strong>
             <ul>
-<!--                <li>Минимум 8 символов</li>-->
-                <li>Используйте буквы и цифры</li>
+                <li>Минимум 6 символов</li>
+                <li>Только латинские буквы и цифры, без пробелов и спецсимволов</li>
+                <li>Минимум одна латинская буква и минимум одна цифра</li>
+                <li>Повтор пароля должен совпадать с основным паролем</li>
             </ul>
         </div>
 
