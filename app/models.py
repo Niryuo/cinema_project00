@@ -14,7 +14,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(100), unique=True, nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), default="user")  # user / admin
+    role = db.Column(db.String(20), default="user")  # user/ admin
     loyalty_card_number = db.Column(db.String(32), unique=True)
     loyalty_points = db.Column(db.Integer, nullable=False, default=0)
     cashback_balance = db.Column(db.Float, nullable=False, default=0.0)
@@ -205,10 +205,6 @@ class Booking(db.Model):
         back_populates="bookings"
     )
 
-    receipt_issued_by = db.relationship(
-        "User",
-        foreign_keys=[receipt_issued_by_id]
-    )
 class FeedbackRequest(db.Model):
     __tablename__ = "feedback_requests"
 
